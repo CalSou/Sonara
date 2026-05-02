@@ -81,9 +81,3 @@ input[type="range"]:focus {
     text-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
   }
 }
-
-/* Wavesurfer container baseline */
-.ws-host {
-  width: 100%;
-  height: 100%;
-}

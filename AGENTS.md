@@ -2,22 +2,25 @@
 
 ## Cursor Cloud specific instructions
 
-This is **Sonara** — a browser-based AI music production studio and DJ console. It is a single Next.js 15 application with no backend services, no database, and no external API dependencies. All AI features are mocked with procedural client-side synthesis.
+This is **Sonara** — a browser-based AI music production studio and DJ console. It is a single Next.js 15 application with no backend services, no database, and no external API dependencies. All AI features are currently mocked with procedural client-side synthesis behind clean provider interfaces.
 
 ### Running the application
 
 - `npm run dev` starts the Next.js dev server on port 3000.
 - Pages: `/` (landing), `/studio` (multitrack production), `/dj` (two-deck DJ console).
-- No environment variables or secrets are required.
+- No environment variables or secrets are required for the current prototype.
 
 ### Lint / Build / Test
 
 - `npm run lint` — runs ESLint via `next lint`.
 - `npm run build` — production build; also validates TypeScript types.
-- There is no dedicated test suite (no `test` script in `package.json`). Use `npm run build` as the primary correctness check beyond linting.
+- `npm run test` — runs Vitest unit tests (stores, audio engine, utilities).
+- `npm run test:watch` — runs Vitest in watch mode.
 
 ### Key caveats
 
 - Audio playback requires a user gesture (click Play/Generate/Load) to unlock the browser's AudioContext — this is a browser security requirement.
 - The DJ Console's "Load starter tracks" button seeds the procedural sample library; this takes a moment to render audio buffers on first click.
 - The lockfile is `package-lock.json` — always use `npm` (not yarn/pnpm).
+- The Multitrack engine's `removeTrack()` must be called before removing a track from the Zustand store to avoid orphaned Web Audio nodes.
+- Transport BPM is wired to `playbackRate` (non-pitch-preserving interim). Pitch-preserving time-stretch via SoundTouchJS is planned for Phase 4.

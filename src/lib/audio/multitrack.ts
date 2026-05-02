@@ -26,11 +26,34 @@ export class Multitrack {
   private startedAt = 0;
   private startedFrom = 0;
   private _playing = false;
+  private _baseBpm = 120;
+  private _targetBpm = 120;
 
   constructor(ctx: AudioContext) {
     this.ctx = ctx;
     this.out = ctx.createGain();
     this.out.connect(ctx.destination);
+  }
+
+  get playbackRate(): number {
+    return this._targetBpm / this._baseBpm;
+  }
+
+  setBaseBpm(bpm: number) {
+    this._baseBpm = bpm > 0 ? bpm : 120;
+    this.applyPlaybackRate();
+  }
+
+  setTargetBpm(bpm: number) {
+    this._targetBpm = bpm > 0 ? bpm : 120;
+    this.applyPlaybackRate();
+  }
+
+  private applyPlaybackRate() {
+    const rate = this.playbackRate;
+    this.channels.forEach((ch) => {
+      if (ch.source) ch.source.playbackRate.value = rate;
+    });
   }
 
   setTrackBuffer(id: string, buffer: AudioBuffer) {
@@ -66,17 +89,20 @@ export class Multitrack {
 
   getPosition(): number {
     if (!this._playing) return this.startedFrom;
-    return Math.min(this.getDuration(), this.startedFrom + (this.ctx.currentTime - this.startedAt));
+    const elapsed = (this.ctx.currentTime - this.startedAt) * this.playbackRate;
+    return Math.min(this.getDuration(), this.startedFrom + elapsed);
   }
 
   play(fromSec?: number) {
     this.stop(true);
     const start = fromSec ?? this.startedFrom;
+    const rate = this.playbackRate;
     const anySolo = Array.from(this.solo.values()).some(Boolean);
     this.buffers.forEach((buf, id) => {
       const muted = this.mute.get(id) || (anySolo && !this.solo.get(id));
       const src = this.ctx.createBufferSource();
       src.buffer = buf;
+      src.playbackRate.value = rate;
       const gain = this.ctx.createGain();
       gain.gain.value = muted ? 0 : (this.vol.get(id) ?? 0.85);
       const pan = this.ctx.createStereoPanner();

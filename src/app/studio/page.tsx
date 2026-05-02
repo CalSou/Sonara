@@ -45,9 +45,10 @@ export default function StudioPage() {
     if (!engineRef.current) {
       engineRef.current = new Multitrack(getAudioContext());
       engineRef.current.setMasterVolume(masterVolume);
+      engineRef.current.setTargetBpm(bpm);
     }
     return engineRef.current;
-  }, [masterVolume]);
+  }, [masterVolume, bpm]);
 
   // Seed with 3 empty tracks on first load (no engine yet — that needs a user gesture)
   useEffect(() => {
@@ -209,7 +210,10 @@ export default function StudioPage() {
         onTogglePlay={handleTogglePlay}
         onStop={handleStop}
         onRewind={handleRewind}
-        onBpmChange={setBpm}
+        onBpmChange={(v) => {
+          setBpm(v);
+          engineRef.current?.setTargetBpm(v);
+        }}
         onMasterVolumeChange={(v) => {
           setMasterVolume(v);
           ensureEngine().setMasterVolume(v);
@@ -241,7 +245,10 @@ export default function StudioPage() {
                 position={position}
                 duration={duration}
                 onSelect={() => setSelected(t.id)}
-                onRemove={() => removeTrack(t.id)}
+                onRemove={() => {
+                  engineRef.current?.removeTrack(t.id);
+                  removeTrack(t.id);
+                }}
                 onUpload={(file) => handleUpload(t.id, file)}
                 onGenerate={() => {
                   setSelected(t.id);
