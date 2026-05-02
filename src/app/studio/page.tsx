@@ -241,7 +241,10 @@ export default function StudioPage() {
                 position={position}
                 duration={duration}
                 onSelect={() => setSelected(t.id)}
-                onRemove={() => removeTrack(t.id)}
+                onRemove={() => {
+                  engineRef.current?.removeTrack(t.id);
+                  removeTrack(t.id);
+                }}
                 onUpload={(file) => handleUpload(t.id, file)}
                 onGenerate={() => {
                   setSelected(t.id);
