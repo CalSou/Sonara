@@ -83,6 +83,28 @@ describe("studioStore", () => {
   });
 
   describe("track property setters", () => {
+    it("setBuffer attaches buffer and peaks", () => {
+      const id = getState().addTrack();
+      const buf = {
+        length: 1024,
+        duration: 1024 / 44100,
+        sampleRate: 44100,
+        numberOfChannels: 1,
+        getChannelData: () => {
+          const a = new Float32Array(1024);
+          a.fill(0.5);
+          return a;
+        },
+        copyFromChannel: () => {},
+        copyToChannel: () => {},
+      } as unknown as AudioBuffer;
+      getState().setBuffer(id, buf);
+      const t = getState().tracks[0];
+      expect(t.buffer).toBe(buf);
+      expect(t.peaks).not.toBeNull();
+      expect(t.peaks!.length).toBeGreaterThan(0);
+    });
+
     it("setName updates track name", () => {
       const id = getState().addTrack();
       getState().setName(id, "Bass");

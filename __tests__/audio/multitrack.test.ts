@@ -176,6 +176,28 @@ describe("Multitrack", () => {
       expect(engine.out.gain.value).toBe(0.5);
     });
 
+    it("setMute during playback restarts with zero gain on muted track", () => {
+      engine.setTrackBuffer("a", createMockBuffer(5));
+      engine.setTrackBuffer("b", createMockBuffer(5));
+      engine.play();
+      engine.setMute("a", true);
+      const gains = (ctx.createGain as ReturnType<typeof vi.fn>).mock.results
+        .slice(-4)
+        .map((r) => r.value.gain.value as number);
+      expect(gains.some((g) => g === 0)).toBe(true);
+    });
+
+    it("setSolo mutes non-solo tracks when any solo is on", () => {
+      engine.setTrackBuffer("a", createMockBuffer(5));
+      engine.setTrackBuffer("b", createMockBuffer(5));
+      engine.play();
+      engine.setSolo("a", true);
+      const gains = (ctx.createGain as ReturnType<typeof vi.fn>).mock.results
+        .slice(-4)
+        .map((r) => r.value.gain.value as number);
+      expect(gains.filter((g) => g === 0).length).toBeGreaterThanOrEqual(1);
+    });
+
     it("setVolume updates gain for active channel", () => {
       engine.setTrackBuffer("a", createMockBuffer(5));
       engine.play();
