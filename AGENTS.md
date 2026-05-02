@@ -2,7 +2,7 @@
 
 ## Cursor Cloud specific instructions
 
-This is **Sonara** — a browser-based AI music production studio and DJ console. It is a single Next.js 15 application. All AI features are currently mocked with procedural client-side synthesis behind clean provider interfaces.
+This is **Sonara** — a browser-based AI music production studio and DJ console. It is a single Next.js 15 application with no backend services, no database, and no external API dependencies. All AI features are currently mocked with procedural client-side synthesis behind clean provider interfaces.
 
 ### Running the application
 
