@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { buildStarterLibrary, specToAnalysis } from "@/lib/audio/sampleTracks";
 
 function mockAudioContext(): AudioContext {
   return {
-    sampleRate: 44100,
+    // Keep the procedural renderer fast in CI while preserving duration semantics.
+    sampleRate: 1000,
     createBuffer: (channels: number, length: number, sampleRate: number) => ({
       length,
       duration: length / sampleRate,
