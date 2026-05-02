@@ -16,8 +16,13 @@ This is **Sonara** — a browser-based AI music production studio and DJ console
 - `npm run build` — production build; also validates TypeScript types.
 - `npm run test` — runs Vitest unit tests (stores, audio engine, utilities).
 - `npm run test:watch` — runs Vitest in watch mode.
+- `npm run test:coverage` — runs tests with V8 coverage for `src/lib/**/*.ts` (thresholds enforced in `vitest.config.ts`).
+
+CI runs `lint`, `test:coverage`, and `build` on pushes and PRs to `main` (see `.github/workflows/ci.yml`).
 
 ### Key caveats
+
+- **Coverage scope:** Automated thresholds apply only to `src/lib/**` (pure logic + audio). React pages and components are not included in the coverage map yet because the current Vitest coverage provider does not remap TS/TSX; add component tests or switch tooling before enforcing app-wide coverage.
 
 - Audio playback requires a user gesture (click Play/Generate/Load) to unlock the browser's AudioContext — this is a browser security requirement.
 - The DJ Console's "Load starter tracks" button seeds the procedural sample library; this takes a moment to render audio buffers on first click.
