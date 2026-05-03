@@ -87,10 +87,11 @@ describe("getAudioContext / decodeFileToBuffer", () => {
       state = "suspended";
       resume = resume;
     }
-    (globalThis as { window: Window & { AudioContext?: typeof MockCtx } }).window = {
-      AudioContext: MockCtx,
-    } as unknown as Window;
-    (globalThis as { AudioContext?: typeof MockCtx }).AudioContext = MockCtx;
+    (globalThis as unknown as { window: Window & { AudioContext?: typeof MockCtx } }).window =
+      {
+        AudioContext: MockCtx,
+      } as unknown as Window;
+    (globalThis as unknown as { AudioContext?: typeof MockCtx }).AudioContext = MockCtx;
 
     const { getAudioContext } = await loadContextModule();
     const ctx = getAudioContext();
@@ -117,10 +118,11 @@ describe("getAudioContext / decodeFileToBuffer", () => {
       resume = vi.fn();
       decodeAudioData = decodeAudioData;
     }
-    (globalThis as { window: Window & { AudioContext?: typeof MockCtx } }).window = {
-      AudioContext: MockCtx,
-    } as unknown as Window;
-    (globalThis as { AudioContext?: typeof MockCtx }).AudioContext = MockCtx;
+    (globalThis as unknown as { window: Window & { AudioContext?: typeof MockCtx } }).window =
+      {
+        AudioContext: MockCtx,
+      } as unknown as Window;
+    (globalThis as unknown as { AudioContext?: typeof MockCtx }).AudioContext = MockCtx;
 
     const { getAudioContext, decodeFileToBuffer } = await loadContextModule();
     getAudioContext();

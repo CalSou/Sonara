@@ -12,8 +12,16 @@ import { useStudioStore } from "@/lib/store/studioStore";
 import { Multitrack } from "@/lib/audio/multitrack";
 import { decodeFileToBuffer, getAudioContext } from "@/lib/audio/context";
 import { mockProviders } from "@/lib/ai/mock";
+import { useSession } from "next-auth/react";
+import type { StudioTrack } from "@/lib/store/studioStore";
+import {
+  studioStateToWire,
+  wireToStudioPayload,
+  type StudioStateWire,
+} from "@/lib/studio/projectSync";
 
 export default function StudioPage() {
+  const { status } = useSession();
   const tracks = useStudioStore((s) => s.tracks);
   const selectedId = useStudioStore((s) => s.selectedId);
   const isPlaying = useStudioStore((s) => s.isPlaying);
@@ -34,11 +42,19 @@ export default function StudioPage() {
   const setPosition = useStudioStore((s) => s.setPosition);
   const setMasterVolume = useStudioStore((s) => s.setMasterVolume);
   const setBpm = useStudioStore((s) => s.setBpm);
+  const replaceTracks = useStudioStore((s) => s.replaceTracks);
 
   const engineRef = useRef<Multitrack | null>(null);
   const rafRef = useRef<number | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [didSeed, setDidSeed] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("Untitled project");
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  const pushLog = useCallback((m: string) => {
+    setLog((l) => [...l.slice(-30), `${new Date().toLocaleTimeString()}  ${m}`]);
+  }, []);
 
   // Lazy-init engine once user interacts
   const ensureEngine = useCallback(() => {
@@ -59,6 +75,109 @@ export default function StudioPage() {
     setDidSeed(true);
   }, [addTrack, didSeed, tracks.length]);
 
+  const persistEnabled =
+    status === "authenticated" &&
+    Boolean(process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true");
+
+  const applyHydratedState = useCallback(
+    async (wire: StudioStateWire) => {
+      const ctx = getAudioContext();
+      const payload = await wireToStudioPayload(ctx, wire);
+      engineRef.current?.stop();
+      engineRef.current = null;
+      replaceTracks(payload.tracks as StudioTrack[], {
+        selectedId: payload.selectedId,
+      });
+      setIsPlaying(false);
+      setPosition(payload.position);
+      setMasterVolume(payload.masterVolume);
+      setBpm(payload.bpm);
+    },
+    [
+      replaceTracks,
+      setBpm,
+      setIsPlaying,
+      setMasterVolume,
+      setPosition,
+    ],
+  );
+
+  useEffect(() => {
+    if (!persistEnabled) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/v1/projects");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          projects: Array<{
+            id: string;
+            name: string;
+            stateJson: unknown;
+            bpm: number | null;
+          }>;
+        };
+        const row = data.projects?.[0];
+        if (!row || cancelled) return;
+        const sj = row.stateJson as StudioStateWire | undefined;
+        if (!sj || sj.version !== 1) return;
+        setProjectId(row.id);
+        setProjectName(row.name);
+        await applyHydratedState(sj);
+        if (typeof row.bpm === "number") setBpm(row.bpm);
+        pushLog(`Loaded cloud project "${row.name}"`);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [persistEnabled, applyHydratedState, setBpm, pushLog]);
+
+  const handleSaveProject = async () => {
+    if (!persistEnabled) {
+      pushLog("Cloud save skipped (sign in + NEXT_PUBLIC_REQUIRE_AUTH=true)");
+      return;
+    }
+    setSyncStatus("Saving…");
+    try {
+      const wire = await studioStateToWire({
+        tracks,
+        selectedId,
+        isPlaying,
+        position,
+        masterVolume,
+        bpm,
+      });
+      const body = {
+        id: projectId ?? undefined,
+        name: projectName,
+        bpm,
+        state_json: wire as unknown as Record<string, unknown>,
+      };
+      const res = await fetch("/api/v1/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        pushLog(`Save failed: ${(data as { error?: string }).error ?? res.status}`);
+        setSyncStatus("Save failed");
+        return;
+      }
+      const proj = (data as { project?: { id: string } }).project;
+      if (proj?.id) setProjectId(proj.id);
+      pushLog(`Saved "${projectName}" to cloud`);
+      setSyncStatus("Saved");
+      setTimeout(() => setSyncStatus(null), 2000);
+    } catch (e) {
+      pushLog(`Save error: ${(e as Error).message}`);
+      setSyncStatus("Save failed");
+    }
+  };
+
   // Sync engine with state changes
   useEffect(() => {
     const eng = engineRef.current;
@@ -72,6 +191,10 @@ export default function StudioPage() {
     });
     eng.setMasterVolume(masterVolume);
   }, [tracks, masterVolume]);
+
+  useEffect(() => {
+    engineRef.current?.setTargetBpm(bpm);
+  }, [bpm]);
 
   // Position polling
   useEffect(() => {
@@ -103,8 +226,6 @@ export default function StudioPage() {
   );
 
   const selectedTrack = tracks.find((t) => t.id === selectedId) ?? null;
-  const pushLog = (m: string) =>
-    setLog((l) => [...l.slice(-30), `${new Date().toLocaleTimeString()}  ${m}`]);
 
   const handleTogglePlay = () => {
     const eng = ensureEngine();
@@ -193,6 +314,30 @@ export default function StudioPage() {
           <span className="text-xs text-text-mute">/ Studio</span>
         </div>
         <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            className="hidden rounded border border-line bg-bg-panel px-2 py-1 text-xs text-text outline-none focus:border-accent sm:block sm:w-40 md:w-52"
+            placeholder="Project name"
+            aria-label="Project name"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleSaveProject()}
+            disabled={!persistEnabled}
+            title={
+              persistEnabled
+                ? "Save project to PostgreSQL"
+                : "Enable NEXT_PUBLIC_REQUIRE_AUTH and sign in"
+            }
+          >
+            Save project
+          </Button>
+          {syncStatus && (
+            <span className="text-xs text-text-mute">{syncStatus}</span>
+          )}
           <Link href="/dj">
             <Button variant="outline" size="sm">
               <Disc3 className="h-4 w-4" /> DJ Console

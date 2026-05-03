@@ -11,6 +11,20 @@ function reset() {
     position: 0,
     masterVolume: 0.85,
     bpm: 120,
+    replaceTracks: getState().replaceTracks,
+    addTrack: getState().addTrack,
+    removeTrack: getState().removeTrack,
+    setBuffer: getState().setBuffer,
+    setName: getState().setName,
+    setVolume: getState().setVolume,
+    setPan: getState().setPan,
+    setMute: getState().setMute,
+    setSolo: getState().setSolo,
+    setSelected: getState().setSelected,
+    setIsPlaying: getState().setIsPlaying,
+    setPosition: getState().setPosition,
+    setMasterVolume: getState().setMasterVolume,
+    setBpm: getState().setBpm,
   });
 }
 
@@ -79,6 +93,58 @@ describe("studioStore", () => {
       getState().setSelected(second);
       getState().removeTrack(first);
       expect(getState().selectedId).toBe(second);
+    });
+  });
+
+  describe("replaceTracks", () => {
+    it("replaces all tracks and optionally selection", () => {
+      getState().addTrack({ name: "A" });
+      getState().addTrack({ name: "B" });
+      const next = [
+        {
+          id: "x1",
+          name: "Imported",
+          color: "#a855f7",
+          buffer: null,
+          peaks: null,
+          volume: 0.5,
+          pan: 0,
+          mute: true,
+          solo: false,
+        },
+      ];
+      getState().replaceTracks(next, { selectedId: "x1" });
+      expect(getState().tracks).toHaveLength(1);
+      expect(getState().tracks[0].name).toBe("Imported");
+      expect(getState().selectedId).toBe("x1");
+    });
+
+    it("defaults selection to first track when opts omitted", () => {
+      getState().replaceTracks([
+        {
+          id: "a",
+          name: "One",
+          color: "#fff",
+          buffer: null,
+          peaks: null,
+          volume: 1,
+          pan: 0,
+          mute: false,
+          solo: false,
+        },
+        {
+          id: "b",
+          name: "Two",
+          color: "#000",
+          buffer: null,
+          peaks: null,
+          volume: 1,
+          pan: 0,
+          mute: false,
+          solo: false,
+        },
+      ]);
+      expect(getState().selectedId).toBe("a");
     });
   });
 
