@@ -1,46 +1,54 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { resolveAuthSecret } from "@/auth.config";
 
+/** Writable handle so we can safely mutate process.env entries in tests. */
+const env = process.env as Record<string, string | undefined>;
+
 describe("resolveAuthSecret", () => {
-  const originalEnv = { ...process.env };
+  const saved: Record<string, string | undefined> = {};
+  const keys = ["AUTH_SECRET", "NEXTAUTH_SECRET", "NODE_ENV", "NEXT_PHASE", "npm_lifecycle_event"];
 
   beforeEach(() => {
     vi.resetModules();
-    process.env = { ...originalEnv };
-    delete process.env.AUTH_SECRET;
-    delete process.env.NEXTAUTH_SECRET;
+    for (const k of keys) saved[k] = env[k];
+    delete env.AUTH_SECRET;
+    delete env.NEXTAUTH_SECRET;
   });
 
   afterEach(() => {
-    process.env = { ...originalEnv };
+    for (const k of keys) {
+      if (saved[k] === undefined) delete env[k];
+      else env[k] = saved[k];
+    }
   });
 
   it("returns AUTH_SECRET when set", () => {
-    process.env.AUTH_SECRET = "from-auth-secret";
+    env.AUTH_SECRET = "from-auth-secret";
     expect(resolveAuthSecret()).toBe("from-auth-secret");
   });
 
   it("falls back to NEXTAUTH_SECRET", () => {
-    process.env.NEXTAUTH_SECRET = "from-nextauth";
+    env.NEXTAUTH_SECRET = "from-nextauth";
     expect(resolveAuthSecret()).toBe("from-nextauth");
   });
 
   it("allows missing secret during next build (NEXT_PHASE)", () => {
-    process.env.NODE_ENV = "production";
-    process.env.NEXT_PHASE = "phase-production-build";
+    env.NODE_ENV = "production";
+    env.NEXT_PHASE = "phase-production-build";
     expect(resolveAuthSecret()).toMatch(/development-secret/);
   });
 
   it("allows missing secret during npm build lifecycle", () => {
-    process.env.NODE_ENV = "production";
-    process.env.npm_lifecycle_event = "build";
+    env.NODE_ENV = "production";
+    delete env.NEXT_PHASE;
+    env.npm_lifecycle_event = "build";
     expect(resolveAuthSecret()).toMatch(/development-secret/);
   });
 
   it("throws in production runtime when secret is missing", () => {
-    process.env.NODE_ENV = "production";
-    delete process.env.NEXT_PHASE;
-    delete process.env.npm_lifecycle_event;
+    env.NODE_ENV = "production";
+    delete env.NEXT_PHASE;
+    delete env.npm_lifecycle_event;
     expect(() => resolveAuthSecret()).toThrow(/AUTH_SECRET/);
   });
 });
