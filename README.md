@@ -44,6 +44,11 @@ npm run dev
 # open http://localhost:3000
 ```
 
+## Documentation
+
+- **Architecture, deployment & cost (Phase 2 target):** [`docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md`](docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md) — companion to PRD v1.0 (CONFIDENTIAL).
+- **Cursor Cloud agents:** [`AGENTS.md`](AGENTS.md).
+
 ## Project structure
 
 ```
