@@ -24,6 +24,11 @@ interface StudioState {
   masterVolume: number;
   bpm: number;
 
+  /** Replace all tracks at once (used when hydrating from server project JSON). */
+  replaceTracks: (
+    tracks: StudioTrack[],
+    opts?: { selectedId?: string | null },
+  ) => void;
   addTrack: (partial?: Partial<StudioTrack>) => string;
   removeTrack: (id: string) => void;
   setBuffer: (id: string, buffer: AudioBuffer) => void;
@@ -56,6 +61,15 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   position: 0,
   masterVolume: 0.85,
   bpm: 120,
+
+  replaceTracks: (nextTracks, opts) =>
+    set(() => ({
+      tracks: nextTracks,
+      selectedId:
+        opts?.selectedId !== undefined
+          ? opts.selectedId
+          : nextTracks[0]?.id ?? null,
+    })),
 
   addTrack: (partial) => {
     const id = uid("trk");

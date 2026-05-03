@@ -44,6 +44,10 @@ npm run dev
 # open http://localhost:3000
 ```
 
+### Backend auth & Postgres (optional)
+
+For Drizzle + NextAuth + `/api/v1/*`, copy [.env.example](.env.example) to `.env.local`, start Postgres (and Redis/MinIO if needed) with Docker Compose, apply migrations, then run the dev server. Commands are summarized in [AGENTS.md](AGENTS.md) (`docker-compose.dev.yml`, `npm run db:migrate`, `NEXT_PUBLIC_REQUIRE_AUTH`).
+
 ## Documentation
 
 - **Architecture, deployment & cost (Phase 2 target):** [`docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md`](docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md) — companion to PRD v1.0 (CONFIDENTIAL).

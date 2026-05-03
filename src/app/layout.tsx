@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { Providers } from "./providers";
+
 export const metadata: Metadata = {
   title: "Sonara — AI Music Studio & DJ Console",
   description:
@@ -15,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-bg font-sans text-text antialiased">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

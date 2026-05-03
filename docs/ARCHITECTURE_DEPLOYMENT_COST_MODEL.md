@@ -524,7 +524,7 @@ New developer onboarding checklist:
 1. **Clone & install:** `git clone ... && npm install`
 2. **Start services:** `docker compose -f docker-compose.dev.yml up -d`
 3. **Copy env template:** `cp .env.example .env.local` and fill in the local values
-4. **Apply schema:** `npx drizzle-kit push:pg`
+4. **Apply schema:** `npm run db:migrate` (applies SQL in `drizzle/`) or `npm run db:push` for schema sync without migration files
 5. **Run dev server:** `npm run dev` — application available at `http://localhost:3000`
 6. **Verify AI mocks:** With `NEXT_PUBLIC_AI_PROVIDER=mock`, all AI features return realistic test data without hitting Replicate.
 
