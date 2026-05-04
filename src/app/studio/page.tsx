@@ -19,6 +19,8 @@ import {
   wireToStudioPayload,
   type StudioStateWire,
 } from "@/lib/studio/projectSync";
+import { bufferToWavBlob } from "@/components/studio/PublishPanel";
+import { DEFAULT_GENRE_ID } from "@/lib/music/genres";
 
 export default function StudioPage() {
   const { status, data: session } = useSession();
@@ -43,6 +45,7 @@ export default function StudioPage() {
   const setMasterVolume = useStudioStore((s) => s.setMasterVolume);
   const setBpm = useStudioStore((s) => s.setBpm);
   const replaceTracks = useStudioStore((s) => s.replaceTracks);
+  const setGenreId = useStudioStore((s) => s.setGenreId);
 
   const engineRef = useRef<Multitrack | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -66,7 +69,7 @@ export default function StudioPage() {
     return engineRef.current;
   }, [masterVolume, bpm]);
 
-  // Seed with 3 empty tracks on first load (no engine yet — that needs a user gesture)
+  // Seed with 3 empty tracks on first load (no engine yet; needs a user gesture)
   useEffect(() => {
     if (didSeed || tracks.length > 0) return;
     addTrack({ name: "Drums" });
@@ -116,7 +119,7 @@ export default function StudioPage() {
         if (cancelled) return;
         if (res.status === 503) {
           pushLog(
-            "Cloud projects unavailable — set DATABASE_URL and run npm run db:migrate",
+            "Cloud projects unavailable. Set DATABASE_URL and run npm run db:migrate.",
           );
           cloudHydratedRef.current = true;
           return;
@@ -163,7 +166,7 @@ export default function StudioPage() {
 
   const handleSaveProject = async () => {
     if (!cloudPersistenceAvailable) {
-      pushLog("Sign in to save — open Register / Sign in from the header.");
+      pushLog("Sign in to save. Use Register or Sign in in the header.");
       setSyncStatus("Sign in required");
       setTimeout(() => setSyncStatus(null), 2500);
       return;
@@ -291,25 +294,36 @@ export default function StudioPage() {
     try {
       const buf = await decodeFileToBuffer(file);
       setBuffer(id, buf);
-      pushLog(`Loaded "${file.name}" → ${tracks.find((t) => t.id === id)?.name}`);
+      pushLog(`Loaded "${file.name}" into ${tracks.find((t) => t.id === id)?.name}`);
     } catch (e) {
       pushLog(`Failed to decode ${file.name}: ${(e as Error).message}`);
     }
   };
 
-  const handleGenerate = async (prompt: string, durationSec: number) => {
+  const handleGenerate = async (
+    prompt: string,
+    durationSec: number,
+    genreId: string,
+  ) => {
     const ctx = getAudioContext();
-    pushLog(`Generating "${prompt}" (${durationSec}s)…`);
+    pushLog(`Generating "${prompt}" (${durationSec}s, genre ${genreId})…`);
     const result = await mockProviders.generation.generate(
-      { prompt, durationSec },
+      { prompt, durationSec, genreId },
       ctx,
     );
     let targetId = selectedId;
-    if (!targetId) targetId = addTrack({ name: prompt.slice(0, 22) });
+    if (!targetId) targetId = addTrack({ name: prompt.slice(0, 22), genreId });
     setBuffer(targetId, result.buffer);
     setName(targetId, prompt.slice(0, 28));
+    setGenreId(targetId, genreId);
     pushLog(`Generated ${result.durationSec}s @ ${result.bpm} BPM`);
   };
+
+  const getSelectedWavBlob = useCallback(async () => {
+    const buf = selectedTrack?.buffer;
+    if (!buf) return null;
+    return bufferToWavBlob(buf);
+  }, [selectedTrack?.buffer]);
 
   const handleSeparateStems = async () => {
     if (!selectedTrack?.buffer) return;
@@ -323,7 +337,11 @@ export default function StudioPage() {
       other: "#60a5fa",
     };
     (Object.keys(res.stems) as Array<keyof typeof res.stems>).forEach((kind) => {
-      const id = addTrack({ name: `${selectedTrack.name} • ${kind}`, color: stemColors[kind] });
+      const id = addTrack({
+        name: `${selectedTrack.name} • ${kind}`,
+        color: stemColors[kind],
+        genreId: selectedTrack.genreId,
+      });
       setBuffer(id, res.stems[kind]);
     });
     pushLog(`Created 4 stem tracks`);
@@ -471,8 +489,13 @@ export default function StudioPage() {
                 onUpload={(file) => handleUpload(t.id, file)}
                 onGenerate={() => {
                   setSelected(t.id);
-                  void handleGenerate("warm lofi beat with vinyl crackle", 8);
+                  void handleGenerate(
+                    "warm lofi beat with vinyl crackle",
+                    8,
+                    t.genreId,
+                  );
                 }}
+                onGenreChange={(gid) => setGenreId(t.id, gid)}
                 onSeek={(sec) => {
                   ensureEngine().seek(sec);
                   setPosition(sec);
@@ -494,11 +517,14 @@ export default function StudioPage() {
 
         <AIPanel
           selectedTrackName={selectedTrack?.name ?? null}
+          selectedGenreId={selectedTrack?.genreId ?? DEFAULT_GENRE_ID}
           hasSelectedBuffer={!!selectedTrack?.buffer}
           onGenerate={handleGenerate}
           onSeparateStems={handleSeparateStems}
           onMaster={handleMaster}
-          log={log}
+          getSelectedWavBlob={getSelectedWavBlob}
+          logLines={log}
+          appendLog={pushLog}
         />
       </div>
     </div>

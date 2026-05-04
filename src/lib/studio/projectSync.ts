@@ -4,11 +4,14 @@
  */
 
 import { computePeaks } from "@/lib/audio/peaks";
+import { DEFAULT_GENRE_ID } from "@/lib/music/genres";
 
 export type StudioTrackWire = {
   id: string;
   name: string;
   color: string;
+  /** Catalogue genre id (optional on legacy projects) */
+  genreId?: string;
   volume: number;
   pan: number;
   mute: boolean;
@@ -53,6 +56,7 @@ export async function studioStateToWire(state: {
     id: string;
     name: string;
     color: string;
+    genreId: string;
     buffer: AudioBuffer | null;
     peaks: number[] | null;
     volume: number;
@@ -72,6 +76,7 @@ export async function studioStateToWire(state: {
       id: t.id,
       name: t.name,
       color: t.color,
+      genreId: t.genreId,
       volume: t.volume,
       pan: t.pan,
       mute: t.mute,
@@ -100,6 +105,7 @@ export async function wireToStudioPayload(
     id: string;
     name: string;
     color: string;
+    genreId: string;
     buffer: AudioBuffer | null;
     peaks: number[] | null;
     volume: number;
@@ -127,6 +133,7 @@ export async function wireToStudioPayload(
       id: t.id,
       name: t.name,
       color: t.color,
+      genreId: t.genreId ?? DEFAULT_GENRE_ID,
       buffer,
       peaks: buffer ? computePeaks(buffer) : t.peaks,
       volume: t.volume,
