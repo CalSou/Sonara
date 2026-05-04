@@ -49,6 +49,16 @@ Payload uses `src/lib/studio/projectSync.ts` (base64 WAV per track for dev round
 
 CI (`.github/workflows/ci.yml`): install → lint → type-check → test:coverage → build.
 
+### Next.js cache issues (`ENOENT … vendor-chunks/lucide-react.js`)
+
+If the server expects `.next/server/vendor-chunks/*.js` that no longer exists, the `.next` output is **stale or corrupted** (common after interrupted builds or concurrent dev/start).
+
+1. Stop `next dev` / `next start`.
+2. Run **`npm run clean`** (deletes `.next`) — `npm run build` runs **`prebuild`** and wipes `.next` automatically before each production build.
+3. Restart **`npm run dev`** or **`npm run build && npm run start`**.
+
+`next.config.mjs` enables `experimental.optimizePackageImports: ["lucide-react"]` to align lucide bundling with current Next recommendations.
+
 ### Key caveats
 
 - **Coverage:** thresholds apply to `src/lib/**/*.ts` only (`vitest.config.ts`).
