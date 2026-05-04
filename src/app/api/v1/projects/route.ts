@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { requireDb } from "@/db/index";
+import { getDb } from "@/db/index";
 import { projects } from "@/db/schema";
 import { jsonError } from "@/lib/api/errors";
 
@@ -20,7 +20,13 @@ export async function GET() {
     return jsonError(401, { error: "Unauthorized", code: "UNAUTHORIZED" });
   }
 
-  const db = requireDb();
+  const db = getDb();
+  if (!db) {
+    return jsonError(503, {
+      error: "Database not configured",
+      code: "DB_UNAVAILABLE",
+    });
+  }
   const rows = await db.query.projects.findMany({
     where: (p, { eq }) => eq(p.userId, session.user.id),
     orderBy: [desc(projects.updatedAt)],
@@ -45,7 +51,13 @@ export async function POST(req: Request) {
       });
     }
 
-    const db = requireDb();
+    const db = getDb();
+    if (!db) {
+      return jsonError(503, {
+        error: "Database not configured",
+        code: "DB_UNAVAILABLE",
+      });
+    }
     const now = new Date();
 
     if (parsed.data.id) {

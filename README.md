@@ -46,7 +46,7 @@ npm run dev
 
 ### Backend auth & Postgres (optional)
 
-For Drizzle + NextAuth + `/api/v1/*`, copy [.env.example](.env.example) to `.env.local`, start Postgres (and Redis/MinIO if needed) with Docker Compose, apply migrations, then run the dev server. Commands are summarized in [AGENTS.md](AGENTS.md) (`docker-compose.dev.yml`, `npm run db:migrate`, `NEXT_PUBLIC_REQUIRE_AUTH`).
+For Drizzle + NextAuth + `/api/v1/*`, copy [.env.example](.env.example) to `.env.local`, start Postgres with Docker Compose, run `npm run db:migrate`, then open **`/register`** to create an account (or **`/guest-login`**). Studio **Save project** persists when signed in and `DATABASE_URL` is set (see [AGENTS.md](AGENTS.md)). Use `NEXT_PUBLIC_REQUIRE_AUTH=true` only when you want Studio/DJ gated until login.
 
 ## Documentation
 

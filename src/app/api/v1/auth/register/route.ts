@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 
-import { requireDb } from "@/db/index";
+import { getDb } from "@/db/index";
 import { users } from "@/db/schema";
 import { jsonError } from "@/lib/api/errors";
 
@@ -23,7 +23,13 @@ export async function POST(req: Request) {
       });
     }
 
-    const db = requireDb();
+    const db = getDb();
+    if (!db) {
+      return jsonError(503, {
+        error: "Database not configured",
+        code: "DB_UNAVAILABLE",
+      });
+    }
     const exists = await db.query.users.findFirst({
       where: (u, { eq }) => eq(u.email, parsed.data.email),
     });

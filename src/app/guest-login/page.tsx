@@ -76,9 +76,17 @@ function GuestLoginInner() {
       </form>
 
       <p className="text-xs text-text-dim">
-        No account? Register via{" "}
-        <code className="rounded bg-bg-deep px-1 py-0.5">POST /api/v1/auth/register</code>{" "}
-        or continue as guest when auth is disabled.
+        No account?{" "}
+        <Link
+          href={`/register?next=${encodeURIComponent(next)}`}
+          className="text-accent hover:underline"
+        >
+          Create one
+        </Link>
+        {" "}
+        or continue as guest when auth / DB are not enforced (see{" "}
+        <code className="rounded bg-bg-deep px-1 py-0.5">AGENTS.md</code>
+        ).
       </p>
 
       <Link href="/" className="text-sm text-accent hover:underline">
