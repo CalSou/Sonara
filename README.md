@@ -50,6 +50,7 @@ For Drizzle + NextAuth + `/api/v1/*`, copy [.env.example](.env.example) to `.env
 
 ## Documentation
 
+- **FE design mockups:** [`docs/design/`](docs/design/) — landing, Studio, DJ, mobile + register reference images.
 - **Architecture, deployment & cost (Phase 2 target):** [`docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md`](docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md) — companion to PRD v1.0 (CONFIDENTIAL).
 - **Cursor Cloud agents:** [`AGENTS.md`](AGENTS.md).
 
