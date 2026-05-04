@@ -4,10 +4,14 @@ import { create } from "zustand";
 import { uid } from "@/lib/util";
 import { computePeaks } from "@/lib/audio/peaks";
 
+import { DEFAULT_GENRE_ID } from "@/lib/music/genres";
+
 export interface StudioTrack {
   id: string;
   name: string;
   color: string;
+  /** Stable genre id from `src/lib/music/genres.ts` */
+  genreId: string;
   buffer: AudioBuffer | null;
   peaks: number[] | null;
   volume: number;
@@ -32,6 +36,7 @@ interface StudioState {
   addTrack: (partial?: Partial<StudioTrack>) => string;
   removeTrack: (id: string) => void;
   setBuffer: (id: string, buffer: AudioBuffer) => void;
+  setGenreId: (id: string, genreId: string) => void;
   setName: (id: string, name: string) => void;
   setVolume: (id: string, v: number) => void;
   setPan: (id: string, v: number) => void;
@@ -78,6 +83,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       id,
       name: partial?.name ?? `Track ${idx + 1}`,
       color: partial?.color ?? palette[idx % palette.length],
+      genreId: partial?.genreId ?? DEFAULT_GENRE_ID,
       buffer: partial?.buffer ?? null,
       peaks: partial?.buffer ? computePeaks(partial.buffer) : null,
       volume: partial?.volume ?? 0.85,
@@ -93,6 +99,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set((s) => ({
       tracks: s.tracks.filter((t) => t.id !== id),
       selectedId: s.selectedId === id ? null : s.selectedId,
+    })),
+
+  setGenreId: (id, genreId) =>
+    set((s) => ({
+      tracks: s.tracks.map((t) => (t.id === id ? { ...t, genreId } : t)),
     })),
 
   setBuffer: (id, buffer) =>

@@ -4,9 +4,9 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Sonara — AI Music Studio & DJ Console",
+  title: "Sonara: AI Music Studio & DJ Console",
   description:
-    "Compose, generate, separate stems, master, and DJ — all in one AI-powered studio.",
+    "Compose, generate, separate stems, master, and DJ in one AI-powered studio.",
 };
 
 export default function RootLayout({

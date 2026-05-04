@@ -3,6 +3,8 @@ export type StemKind = "vocals" | "drums" | "bass" | "other";
 export interface GenerateOptions {
   prompt: string;
   durationSec: number;
+  /** Catalogue genre id (see `src/lib/music/genres.ts`) */
+  genreId?: string;
   bpm?: number;
   keySignature?: string;
 }
