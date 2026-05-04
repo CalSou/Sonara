@@ -15,7 +15,7 @@ AI generation/stems/mastering remain **mocked on the client** (`src/lib/ai/mock.
 ### Running the application
 
 - `npm run dev` — Next.js on port 3000.
-- Routes: `/` (landing), `/studio`, `/dj`, `/guest-login` (credentials when auth is enforced).
+- Routes: `/` (landing), `/studio`, `/dj`, `/guest-login`, `/register`.
 
 ### Auth middleware / env toggles (`src/middleware.ts`)
 
@@ -37,7 +37,11 @@ AI generation/stems/mastering remain **mocked on the client** (`src/lib/ai/mock.
 
 ### Studio ↔ `/api/v1/projects`
 
-When **signed in** and `NEXT_PUBLIC_REQUIRE_AUTH=true`, Studio loads the latest cloud project on mount and **Save project** POSTs to `/api/v1/projects`. Payload uses `src/lib/studio/projectSync.ts` (base64 WAV per track for round-trip without Supabase URLs — fine for dev; production should prefer storage URLs + asset rows).
+When **signed in** (credentials or OAuth), Studio **GET**s `/api/v1/projects` once per session to load the latest saved project and **Save project** **POST**s to the same route. This works **without** `NEXT_PUBLIC_REQUIRE_AUTH=true` as long as the server has **`DATABASE_URL`** set and migrations applied (`npm run db:migrate`). If the DB is not configured, the API returns **503** and the Studio activity log explains next steps.
+
+**Strict gate:** Set `NEXT_PUBLIC_REQUIRE_AUTH=true` to force login before `/studio` / `/dj` / protected APIs.
+
+Payload uses `src/lib/studio/projectSync.ts` (base64 WAV per track for dev round-trip; production should move to storage URLs + `audio_assets`).
 
 ### Lint / Build / Test
 

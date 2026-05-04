@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Plus, Disc3 } from "lucide-react";
+import { Plus, Disc3, LogOut } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { Transport } from "@/components/studio/Transport";
@@ -12,7 +12,7 @@ import { useStudioStore } from "@/lib/store/studioStore";
 import { Multitrack } from "@/lib/audio/multitrack";
 import { decodeFileToBuffer, getAudioContext } from "@/lib/audio/context";
 import { mockProviders } from "@/lib/ai/mock";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import type { StudioTrack } from "@/lib/store/studioStore";
 import {
   studioStateToWire,
@@ -21,7 +21,7 @@ import {
 } from "@/lib/studio/projectSync";
 
 export default function StudioPage() {
-  const { status } = useSession();
+  const { status, data: session } = useSession();
   const tracks = useStudioStore((s) => s.tracks);
   const selectedId = useStudioStore((s) => s.selectedId);
   const isPlaying = useStudioStore((s) => s.isPlaying);
@@ -75,9 +75,8 @@ export default function StudioPage() {
     setDidSeed(true);
   }, [addTrack, didSeed, tracks.length]);
 
-  const persistEnabled =
-    status === "authenticated" &&
-    Boolean(process.env.NEXT_PUBLIC_REQUIRE_AUTH === "true");
+  /** Signed-in + DATABASE_URL on server → cloud save/load available */
+  const cloudPersistenceAvailable = status === "authenticated";
 
   const applyHydratedState = useCallback(
     async (wire: StudioStateWire) => {
@@ -102,12 +101,26 @@ export default function StudioPage() {
     ],
   );
 
+  const cloudHydratedRef = useRef(false);
+
   useEffect(() => {
-    if (!persistEnabled) return;
+    if (!cloudPersistenceAvailable) {
+      cloudHydratedRef.current = false;
+      return;
+    }
+    if (cloudHydratedRef.current) return;
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/v1/projects");
+        if (cancelled) return;
+        if (res.status === 503) {
+          pushLog(
+            "Cloud projects unavailable — set DATABASE_URL and run npm run db:migrate",
+          );
+          cloudHydratedRef.current = true;
+          return;
+        }
         if (!res.ok) return;
         const data = (await res.json()) as {
           projects: Array<{
@@ -118,9 +131,15 @@ export default function StudioPage() {
           }>;
         };
         const row = data.projects?.[0];
-        if (!row || cancelled) return;
+        if (!row) {
+          cloudHydratedRef.current = true;
+          return;
+        }
         const sj = row.stateJson as StudioStateWire | undefined;
-        if (!sj || sj.version !== 1) return;
+        if (!sj || sj.version !== 1) {
+          cloudHydratedRef.current = true;
+          return;
+        }
         setProjectId(row.id);
         setProjectName(row.name);
         await applyHydratedState(sj);
@@ -128,16 +147,25 @@ export default function StudioPage() {
         pushLog(`Loaded cloud project "${row.name}"`);
       } catch {
         /* ignore */
+      } finally {
+        cloudHydratedRef.current = true;
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [persistEnabled, applyHydratedState, setBpm, pushLog]);
+  }, [
+    cloudPersistenceAvailable,
+    applyHydratedState,
+    setBpm,
+    pushLog,
+  ]);
 
   const handleSaveProject = async () => {
-    if (!persistEnabled) {
-      pushLog("Cloud save skipped (sign in + NEXT_PUBLIC_REQUIRE_AUTH=true)");
+    if (!cloudPersistenceAvailable) {
+      pushLog("Sign in to save — open Register / Sign in from the header.");
+      setSyncStatus("Sign in required");
+      setTimeout(() => setSyncStatus(null), 2500);
       return;
     }
     setSyncStatus("Saving…");
@@ -162,6 +190,14 @@ export default function StudioPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 503) {
+        pushLog(
+          `Save failed: ${(data as { error?: string }).error ?? "Database not configured"}`,
+        );
+        setSyncStatus("DB not configured");
+        setTimeout(() => setSyncStatus(null), 3000);
+        return;
+      }
       if (!res.ok) {
         pushLog(`Save failed: ${(data as { error?: string }).error ?? res.status}`);
         setSyncStatus("Save failed");
@@ -313,7 +349,7 @@ export default function StudioPage() {
           <Logo />
           <span className="text-xs text-text-mute">/ Studio</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <input
             type="text"
             value={projectName}
@@ -326,17 +362,45 @@ export default function StudioPage() {
             variant="outline"
             size="sm"
             onClick={() => void handleSaveProject()}
-            disabled={!persistEnabled}
+            disabled={status !== "authenticated"}
             title={
-              persistEnabled
+              status === "authenticated"
                 ? "Save project to PostgreSQL"
-                : "Enable NEXT_PUBLIC_REQUIRE_AUTH and sign in"
+                : "Sign in to enable cloud save"
             }
           >
             Save project
           </Button>
           {syncStatus && (
             <span className="text-xs text-text-mute">{syncStatus}</span>
+          )}
+          {status === "authenticated" ? (
+            <>
+              <span className="hidden max-w-[140px] truncate text-xs text-text-dim md:inline" title={session?.user?.email ?? ""}>
+                {session?.user?.email ?? session?.user?.name ?? "Signed in"}
+              </span>
+              <Button
+                variant="subtle"
+                size="sm"
+                onClick={() => void signOut({ callbackUrl: "/" })}
+                title="Sign out"
+              >
+                <LogOut className="h-3.5 w-3.5" /> Sign out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href="/register?next=%2Fstudio">
+                <Button variant="subtle" size="sm">
+                  Register
+                </Button>
+              </Link>
+              <Link href="/guest-login?next=%2Fstudio">
+                <Button variant="outline" size="sm">
+                  Sign in
+                </Button>
+              </Link>
+            </>
           )}
           <Link href="/dj">
             <Button variant="outline" size="sm">
