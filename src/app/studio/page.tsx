@@ -342,20 +342,27 @@ export default function StudioPage() {
     res.notes.forEach((n) => pushLog(`  ${n}`));
   };
 
+  const timelineProgress = duration > 0 ? Math.min(1, position / duration) : 0;
+
   return (
-    <div className="flex h-screen flex-col bg-bg">
-      <header className="flex items-center justify-between border-b border-line bg-bg-panel px-4 py-3">
+    <div className="relative flex h-screen flex-col bg-bg">
+      <div className="pointer-events-none absolute inset-0 grid-bg opacity-35" />
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[min(55vh,520px)] w-[min(110vw,900px)] -translate-x-1/2 rounded-full bg-accent/15 blur-[120px]" />
+
+      <header className="relative z-10 flex items-center justify-between border-b border-line/80 bg-bg-panel/75 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center gap-6">
           <Logo />
-          <span className="text-xs text-text-mute">/ Studio</span>
+          <span className="rounded-full border border-line/60 bg-bg-deep/50 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider text-text-mute">
+            Studio
+          </span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <input
             type="text"
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
-            className="hidden rounded border border-line bg-bg-panel px-2 py-1 text-xs text-text outline-none focus:border-accent sm:block sm:w-40 md:w-52"
-            placeholder="Project name"
+            className="hidden rounded-lg border border-line/80 bg-bg-deep/60 px-2.5 py-1 text-xs text-text outline-none transition placeholder:text-text-mute focus:border-accent/50 sm:block sm:w-40 md:w-52"
+            placeholder="Untitled project"
             aria-label="Project name"
           />
           <Button
@@ -429,15 +436,16 @@ export default function StudioPage() {
         }}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <main className="flex-1 overflow-y-auto">
-          <div className="flex items-center justify-between border-b border-line bg-bg-panel/60 px-4 py-2">
-            <div className="text-xs text-text-mute">
+      <div className="relative z-10 flex flex-1 overflow-hidden">
+        <main className="flex flex-1 flex-col overflow-hidden bg-bg-deep/20">
+          <div className="flex shrink-0 items-center justify-between border-b border-line/70 bg-bg-panel/40 px-4 py-2 backdrop-blur-sm">
+            <div className="font-mono text-[11px] tabular-nums text-text-mute">
               {tracks.length} track{tracks.length === 1 ? "" : "s"}
             </div>
             <Button
-              variant="subtle"
+              variant="outline"
               size="sm"
+              className="border-accent/35 text-accent hover:border-accent hover:bg-accent/10"
               onClick={() => addTrack()}
               aria-label="Add track"
             >
@@ -445,7 +453,7 @@ export default function StudioPage() {
             </Button>
           </div>
 
-          <div>
+          <div className="flex-1 overflow-y-auto">
             {tracks.map((t) => (
               <TrackLane
                 key={t.id}
@@ -453,6 +461,8 @@ export default function StudioPage() {
                 selected={t.id === selectedId}
                 position={position}
                 duration={duration}
+                timelineProgress={timelineProgress}
+                isTimelinePlaying={isPlaying}
                 onSelect={() => setSelected(t.id)}
                 onRemove={() => {
                   engineRef.current?.removeTrack(t.id);
