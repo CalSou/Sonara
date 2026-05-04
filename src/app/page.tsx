@@ -22,6 +22,7 @@ export default function Home() {
         <nav className="flex items-center gap-6 text-sm text-text-dim">
           <Link href="/studio" className="hover:text-text">Studio</Link>
           <Link href="/dj" className="hover:text-text">DJ Console</Link>
+          <Link href="/design" className="hover:text-text">Design</Link>
           <a
             href="https://github.com"
             className="hover:text-text"
