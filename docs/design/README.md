@@ -27,3 +27,5 @@ High-fidelity UI mockups of Sonara for design reference. These are **exploratory
 ## Usage
 
 Reference these when reviewing PRs that touch landing, Studio, DJ, or onboarding surfaces. Raise a design PR to update a mockup alongside any significant UI change so the two stay in sync.
+
+**Production Studio:** `/studio` is visually aligned with [`02_studio.png`](./02_studio.png) — circular purple Play with glow, tabular time/BPM readouts, shared timeline playhead across all lanes, rounded waveform wells with progress shading, pill mute/solo + volume strip + draggable Pan knob, and an elevated AI Co-Pilot deck panel.

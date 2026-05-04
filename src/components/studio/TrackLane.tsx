@@ -2,8 +2,6 @@
 
 import {
   Volume2,
-  VolumeX,
-  Headphones,
   Trash2,
   Upload,
   Wand2,
@@ -11,6 +9,7 @@ import {
 import { useRef } from "react";
 import { Waveform } from "@/components/ui/Waveform";
 import { Button } from "@/components/ui/Button";
+import { PanKnob } from "@/components/studio/PanKnob";
 import { clsx } from "@/lib/util";
 import type { StudioTrack } from "@/lib/store/studioStore";
 
@@ -19,6 +18,9 @@ interface Props {
   selected: boolean;
   position: number;
   duration: number;
+  /** 0..1 playhead across the shared timeline */
+  timelineProgress: number;
+  isTimelinePlaying: boolean;
   onSelect: () => void;
   onRemove: () => void;
   onUpload: (file: File) => void;
@@ -36,6 +38,8 @@ export function TrackLane({
   selected,
   position,
   duration,
+  timelineProgress,
+  isTimelinePlaying,
   onSelect,
   onRemove,
   onUpload,
@@ -49,56 +53,57 @@ export function TrackLane({
 }: Props) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const trackDur = track.buffer?.duration ?? 0;
-  // Render progress relative to the timeline (the full multitrack duration)
-  const progressNorm = duration > 0 ? Math.min(1, position / duration) : 0;
-  // Width fraction this track occupies on the timeline
+  const progressNorm =
+    trackDur > 0 ? Math.min(1, position / trackDur) : 0;
   const widthPct = duration > 0 ? Math.min(100, (trackDur / duration) * 100) : 100;
+  const isHot = selected && isTimelinePlaying;
 
   return (
     <div
       onClick={onSelect}
       className={clsx(
-        "group flex border-b border-line bg-bg-panel transition-colors hover:bg-bg-raised/40",
-        selected && "bg-bg-raised/60",
+        "group flex min-h-[96px] border-b border-line/70 bg-bg-panel/30 transition-colors hover:bg-bg-raised/25",
+        selected && "bg-accent/[0.06] ring-1 ring-inset ring-accent/20",
       )}
     >
-      {/* Header column */}
+      {/* Track header — mockup-style strip */}
       <div
-        className="flex w-56 shrink-0 flex-col gap-2 border-r border-line p-3"
-        style={{ borderLeft: `3px solid ${track.color}` }}
+        className="flex w-[min(220px,32vw)] shrink-0 flex-col justify-center gap-2.5 border-r border-line/70 bg-bg-deep/40 p-3"
+        style={{ borderLeftWidth: 4, borderLeftColor: track.color }}
       >
         <div className="flex items-center justify-between gap-2">
           <input
             value={track.name}
             onChange={(e) => onRename(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            className="min-w-0 flex-1 bg-transparent text-sm font-medium text-text outline-none focus:bg-bg-deep focus:px-1 focus:rounded"
+            className="min-w-0 flex-1 truncate bg-transparent text-sm font-semibold tracking-tight text-text outline-none placeholder:text-text-mute focus:ring-0"
           />
           <button
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
             }}
-            className="opacity-0 transition group-hover:opacity-100"
+            className="shrink-0 rounded p-1 opacity-0 transition hover:bg-bg-raised group-hover:opacity-100"
             aria-label="Remove track"
           >
             <Trash2 className="h-3.5 w-3.5 text-text-mute hover:text-red-400" />
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleMute();
             }}
             className={clsx(
-              "inline-flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold",
+              "inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums transition",
               track.mute
-                ? "bg-red-500/20 text-red-300"
-                : "border border-line text-text-mute hover:text-text",
+                ? "bg-red-500/25 text-red-200 ring-1 ring-red-400/40"
+                : "border border-line/80 bg-bg-deep/60 text-text-mute hover:border-text-mute hover:text-text",
             )}
             aria-label="Mute"
+            aria-pressed={track.mute}
           >
             M
           </button>
@@ -108,61 +113,71 @@ export function TrackLane({
               onToggleSolo();
             }}
             className={clsx(
-              "inline-flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold",
+              "inline-flex min-w-[2rem] items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums transition",
               track.solo
-                ? "bg-amber-500/20 text-amber-300"
-                : "border border-line text-text-mute hover:text-text",
+                ? "bg-amber-500/25 text-amber-200 ring-1 ring-amber-400/40"
+                : "border border-line/80 bg-bg-deep/60 text-text-mute hover:border-text-mute hover:text-text",
             )}
             aria-label="Solo"
+            aria-pressed={track.solo}
           >
             S
           </button>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={track.volume}
-            onChange={(e) => {
-              onVolume(Number(e.target.value));
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="ml-1 flex-1"
-            aria-label="Volume"
-          />
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <Volume2 className="h-3 w-3 shrink-0 text-text-mute" />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={track.volume}
+              onChange={(e) => onVolume(Number(e.target.value))}
+              onClick={(e) => e.stopPropagation()}
+              className="studio-vol-slider h-1 flex-1"
+              aria-label="Volume"
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wider text-text-mute">Pan</span>
-          <input
-            type="range"
-            min={-1}
-            max={1}
-            step={0.01}
-            value={track.pan}
-            onChange={(e) => onPan(Number(e.target.value))}
-            onClick={(e) => e.stopPropagation()}
-            className="flex-1"
-            aria-label="Pan"
-          />
+
+        <div className="flex items-center justify-center pt-0.5">
+          <PanKnob value={track.pan} onChange={onPan} />
         </div>
       </div>
 
-      {/* Waveform area */}
-      <div className="relative flex-1 p-2">
+      {/* Waveform well — shared timeline playhead */}
+      <div className="relative flex min-h-[96px] flex-1 items-stretch p-3">
         {track.buffer ? (
-          <div style={{ width: `${widthPct}%` }}>
-            <Waveform
-              peaks={track.peaks}
-              progress={trackDur > 0 ? Math.min(1, position / trackDur) : 0}
-              height={64}
-              color={track.color}
-              progressColor={track.color}
-              hot={false}
-              onSeek={(r) => onSeek(r * trackDur)}
-            />
+          <div className="relative w-full overflow-hidden rounded-xl border border-line/80 bg-[#06060c]/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div style={{ width: `${widthPct}%` }} className="relative">
+              <Waveform
+                peaks={track.peaks}
+                progress={progressNorm}
+                height={72}
+                color={track.color}
+                progressColor="rgba(255,255,255,0.92)"
+                bgColor="transparent"
+                hot={isHot}
+                showInnerPlayhead={false}
+                onSeek={(r) => onSeek(r * trackDur)}
+              />
+            </div>
+            {duration > 0 && (
+              <div
+                className="pointer-events-none absolute inset-0"
+                aria-hidden
+              >
+                <div
+                  className="absolute top-2 bottom-2 w-px bg-white shadow-[0_0_14px_rgba(168,85,247,0.85)]"
+                  style={{
+                    left: `${timelineProgress * 100}%`,
+                    transform: "translateX(-50%)",
+                  }}
+                />
+              </div>
+            )}
           </div>
         ) : (
-          <div className="flex h-16 items-center justify-center gap-2 rounded border border-dashed border-line text-xs text-text-mute">
+          <div className="relative flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line/70 bg-bg-deep/50 px-4 py-6 text-xs text-text-mute">
             <Button
               variant="subtle"
               size="sm"
@@ -173,10 +188,11 @@ export function TrackLane({
             >
               <Upload className="h-3.5 w-3.5" /> Upload audio
             </Button>
-            <span className="text-text-mute">or</span>
+            <span className="text-text-mute/80">or</span>
             <Button
-              variant="subtle"
+              variant="outline"
               size="sm"
+              className="border-accent/40 text-accent hover:border-accent hover:bg-accent/10"
               onClick={(e) => {
                 e.stopPropagation();
                 onGenerate();
@@ -184,17 +200,17 @@ export function TrackLane({
             >
               <Wand2 className="h-3.5 w-3.5" /> Generate
             </Button>
-          </div>
-        )}
-        {/* Hidden timeline progress overlay for empty tracks */}
-        {!track.buffer && duration > 0 && (
-          <div
-            className="pointer-events-none absolute left-2 top-1/2 h-px w-[calc(100%-1rem)] -translate-y-1/2"
-          >
-            <div
-              className="absolute top-1/2 h-12 w-px -translate-y-1/2 bg-white/40"
-              style={{ left: `${progressNorm * 100}%` }}
-            />
+            {duration > 0 && (
+              <div className="pointer-events-none absolute inset-0 rounded-xl">
+                <div
+                  className="absolute top-3 bottom-3 w-px bg-white/70 shadow-[0_0_10px_rgba(168,85,247,0.7)]"
+                  style={{
+                    left: `${timelineProgress * 100}%`,
+                    transform: "translateX(-50%)",
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
