@@ -11,6 +11,8 @@ interface Props {
   bgColor?: string;
   onSeek?: (ratio: number) => void;
   hot?: boolean; // tint a "playing" highlight
+  /** When false, waveform draws progress shading only — timeline draws global playhead */
+  showInnerPlayhead?: boolean;
 }
 
 /** Lightweight canvas waveform renderer. */
@@ -23,6 +25,7 @@ export function Waveform({
   bgColor = "transparent",
   onSeek,
   hot = false,
+  showInnerPlayhead = true,
 }: Props) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -61,18 +64,18 @@ export function Waveform({
       const idx = Math.floor(x * step);
       const v = peaks[idx] ?? 0;
       const y = Math.max(1, v * (h * 0.45));
-      g.fillStyle = x < cutoff ? progressColor : color;
-      g.globalAlpha = hot && x < cutoff ? 1 : 0.85;
+      const played = x < cutoff;
+      g.globalAlpha = played ? (hot ? 1 : 0.95) : 0.55;
+      g.fillStyle = played ? progressColor : color;
       g.fillRect(x, mid - y, 1, y * 2);
     }
     g.globalAlpha = 1;
 
-    // playhead
-    if (cutoff > 0 && cutoff < w) {
+    if (showInnerPlayhead && cutoff > 0 && cutoff < w) {
       g.fillStyle = "#ffffff";
       g.fillRect(cutoff - 0.5, 0, 1, h);
     }
-  }, [peaks, progress, height, color, progressColor, bgColor, hot]);
+  }, [peaks, progress, height, color, progressColor, bgColor, hot, showInnerPlayhead]);
 
   return (
     <div

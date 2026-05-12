@@ -27,7 +27,7 @@ import type {
  * waveforms look interesting and play back convincingly.
  *
  * Replace any of these with a real implementation that talks to a Python
- * service / Replicate / Demucs / etc. — the interfaces stay identical.
+ * service / Replicate / Demucs / etc. The interfaces stay identical.
  */
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -85,9 +85,43 @@ const promptVibes: { match: RegExp; bpm: number; root: number }[] = [
   { match: /reggae|dub/i, bpm: 76, root: 146.83 },
 ];
 
+/** Genre catalogue presets steer BPM and tonal root when `genreId` is set */
+const genrePresets: Record<string, { bpm: number; root: number }> = {
+  electronic: { bpm: 122, root: 220 },
+  house: { bpm: 124, root: 261.63 },
+  techno: { bpm: 132, root: 174.61 },
+  trance: { bpm: 138, root: 293.66 },
+  "drum-bass": { bpm: 174, root: 196 },
+  dubstep: { bpm: 140, root: 82.41 },
+  "hip-hop": { bpm: 90, root: 110 },
+  trap: { bpm: 142, root: 103.83 },
+  rnb: { bpm: 86, root: 207.65 },
+  pop: { bpm: 118, root: 261.63 },
+  rock: { bpm: 128, root: 164.81 },
+  metal: { bpm: 150, root: 164.81 },
+  indie: { bpm: 112, root: 246.94 },
+  jazz: { bpm: 110, root: 233.08 },
+  classical: { bpm: 72, root: 261.63 },
+  ambient: { bpm: 70, root: 130.81 },
+  lofi: { bpm: 78, root: 220 },
+  latin: { bpm: 118, root: 196 },
+  afrobeats: { bpm: 112, root: 207.65 },
+  reggae: { bpm: 76, root: 146.83 },
+  folk: { bpm: 95, root: 220 },
+  country: { bpm: 108, root: 164.81 },
+  world: { bpm: 100, root: 174.61 },
+  experimental: { bpm: 100, root: 139.69 },
+};
+
 function inferVibe(prompt: string) {
   for (const v of promptVibes) if (v.match.test(prompt)) return v;
   return { bpm: 120, root: 220 };
+}
+
+function vibeFromOpts(opts: GenerateOptions) {
+  const gid = opts.genreId?.trim();
+  if (gid && genrePresets[gid]) return genrePresets[gid];
+  return inferVibe(opts.prompt);
 }
 
 class MockGeneration implements MusicGenerationProvider {
@@ -96,7 +130,7 @@ class MockGeneration implements MusicGenerationProvider {
     ctx: AudioContext,
   ): Promise<GenerationResult> {
     await sleep(900 + Math.random() * 600);
-    const vibe = inferVibe(opts.prompt);
+    const vibe = vibeFromOpts(opts);
     const bpm = opts.bpm ?? vibe.bpm;
     const beat = 60 / bpm;
     const root = vibe.root;
@@ -318,7 +352,7 @@ class MockAutoMix implements AutoMixProvider {
         `Beatmatch ${a.analysis.bpm}→${b.analysis.bpm} BPM`,
         sameKey
           ? `Harmonic match (${a.analysis.keyCamelot})`
-          : `Key change ${a.analysis.keyCamelot}→${b.analysis.keyCamelot} — apply EQ swap`,
+          : `Key change ${a.analysis.keyCamelot}→${b.analysis.keyCamelot}; apply EQ swap`,
         sameKey ? "Long blend (16 bars)" : "Short blend (8 bars)",
       ],
     };
@@ -328,7 +362,7 @@ class MockAutoMix implements AutoMixProvider {
     tracks: { id: string; analysis: TrackAnalysis }[],
   ): Promise<AutoSetlistResult> {
     await sleep(500);
-    // Order by energy ascending then by bpm — a credible warm-up arc.
+    // Order by energy ascending then by bpm for a credible warm-up arc.
     const ordered = [...tracks].sort((x, y) => {
       const e = x.analysis.energy - y.analysis.energy;
       if (Math.abs(e) > 0.05) return e;

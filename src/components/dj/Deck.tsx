@@ -61,7 +61,7 @@ export function Deck({
           </span>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">
-              {track ? track.name : "— empty deck —"}
+              {track ? track.name : "(empty deck)"}
             </div>
             <div className="text-[10px] uppercase tracking-wider text-text-mute">
               {track ? `${track.analysis.keyCamelot} · ${track.analysis.keyMusical}` : "Drop a track"}

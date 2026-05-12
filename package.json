@@ -3,29 +3,53 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true});\"",
+    "prebuild": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true});\"",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^1.11.2",
+    "@supabase/supabase-js": "^2.105.1",
+    "bcrypt": "^6.0.0",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^0.460.0",
     "next": "^15.1.0",
+    "next-auth": "^5.0.0-beta.31",
+    "postgres": "^3.4.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "zustand": "^5.0.2",
-    "wavesurfer.js": "^7.8.10",
-    "lucide-react": "^0.460.0",
-    "clsx": "^2.1.1"
+    "zod": "^4.4.2",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.9.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "tailwindcss": "^3.4.14",
-    "postcss": "^8.4.49",
+    "@vitest/coverage-v8": "^4.1.5",
     "autoprefixer": "^10.4.20",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.14.0",
-    "eslint-config-next": "^15.1.0"
+    "eslint-config-next": "^15.1.0",
+    "jsdom": "^29.1.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.14",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.5"
   }
 }
