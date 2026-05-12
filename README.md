@@ -24,7 +24,7 @@ Built with **Next.js 15 (App Router) · TypeScript · Tailwind CSS · Web Audio 
   - **Generate** music from a text prompt (genre catalogue plus keyword inference)
   - **Separate stems** (vocals / drums / bass / other) → each becomes a new track
   - **Master** the selected track (loudness target, brightness, punch)
-  - **Publish**: export WAV; optional SoundCloud proxy (`PUBLISH_PROXY_ENABLED`); YouTube/Spotify documented constraints
+  - **Publish**: studio track or **file upload** (MP3/WAV/FLAC/etc.); WAV export; optional SoundCloud proxy (`PUBLISH_PROXY_ENABLED`); optional YouTube **video** upload proxy (`YOUTUBE_PUBLISH_PROXY_ENABLED`); Spotify distributor workflow documented
 
 ### DJ Console (`/dj`)
 

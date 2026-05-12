@@ -45,7 +45,7 @@ Payload uses `src/lib/studio/projectSync.ts` (base64 WAV per track for dev round
 
 ### Publish tab / third-party upload (MVP)
 
-Studio **Publish** supports **Export WAV** from the selected track buffer, **pick any audio file** from disk for upload (MP3, WAV, FLAC, AAC, OGG, AIFF, etc., browser-dependent), or **use selected track** (encoded WAV). SoundCloud proxy: **`POST /api/v1/publish/soundcloud`** when **`PUBLISH_PROXY_ENABLED=true`**. YouTube/Spotify routes document MVP constraints (see **`docs/publishing-third-party.md`**).
+Studio **Publish** supports studio-track WAV encoding, **any picked audio/video file** for SoundCloud (audio) / YouTube (video MP4 etc.), SoundCloud proxy: **`POST /api/v1/publish/soundcloud`** when **`PUBLISH_PROXY_ENABLED=true`**; YouTube resumable proxy when **`YOUTUBE_PUBLISH_PROXY_ENABLED=true`**. Spotify remains distributor-only (see **`docs/publishing-third-party.md`**).
 
 ### Lint / Build / Test
 

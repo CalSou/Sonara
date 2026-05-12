@@ -1,23 +1,30 @@
 # Third-party publishing (SoundCloud, YouTube, Spotify)
 
-This note captures what Sonara can automate today versus what needs distributor workflows or extra OAuth work.
+What Sonara ships as **MVP** versus platform limits.
+
+## Universal files (Studio Publish tab)
+
+- **Studio track:** rendered to **WAV** for export and for SoundCloud when that source is selected (internally lossless PCM).
+- **File from computer:** Sonara forwards your **original bytes** (MP3, WAV, FLAC, AAC, OGG, AIFF, etc.). What actually uploads depends on the platform (SoundCloud accepts many audio formats per their docs).
+- **Large files:** serverless hosts often cap request body size (for example a few MB). Big mixes may require **self-hosted Node** or chunked flows in a later iteration.
 
 ## SoundCloud
 
-- **Upload API:** SoundCloud exposes track creation via `POST https://api.soundcloud.com/tracks` with OAuth user tokens and multipart form fields such as `track[title]` and `track[asset_data]` (audio file). See the [SoundCloud API guide](https://developers.soundcloud.com/docs/api/guide).
-- **Sonara:** Studio **Publish** tab can upload when `PUBLISH_PROXY_ENABLED=true` in `.env.local`. The Next.js route `/api/v1/publish/soundcloud` forwards the multipart body to SoundCloud so the browser never needs CORS access to `api.soundcloud.com`.
-- **Security:** The beta UI asks for an OAuth access token in the browser. That is convenient for demos only. Production should use Authorization Code + PKCE, store refresh tokens server-side, and never paste secrets into the client.
+- **API:** `POST https://api.soundcloud.com/tracks` with OAuth user token and multipart fields such as `track[title]` and `track[asset_data]`. See the [SoundCloud API guide](https://developers.soundcloud.com/docs/api/guide).
+- **Sonara:** `/api/v1/publish/soundcloud` proxies the browser multipart body when **`PUBLISH_PROXY_ENABLED=true`**.
+- **Security:** Demo UI can paste an OAuth token; production should use Authorization Code + PKCE and **never** expose refresh tokens to the client.
 
 ## YouTube
 
-- **Upload API:** Google **YouTube Data API v3** supports **resumable uploads** for `videos.insert`. Requires a Google Cloud project, OAuth consent, and scope such as `https://www.googleapis.com/auth/youtube.upload`. Private uploads may apply until the API project passes verification. See [Upload a video](https://developers.google.com/youtube/v3/guides/uploading_a_video).
-- **Sonara:** `/api/v1/publish/youtube` returns `501` until we implement OAuth token handling and the resumable protocol. Use **Export WAV** from Studio and upload via YouTube Studio as an interim path.
+- **API:** [YouTube Data API v3](https://developers.google.com/youtube/v3/guides/uploading_a_video) **resumable upload** for `videos.insert`. Needs Google Cloud project, OAuth consent, and scope such as `https://www.googleapis.com/auth/youtube.upload`.
+- **MVP constraint:** `videos.insert` expects a **video container** (for example **MP4**), not a bare WAV/MP3. Producers should mux audio + still image or video in an editor, pick **File from computer** with that MP4/MOV/WebM, then upload.
+- **Sonara:** `/api/v1/publish/youtube` performs initiate + PUT when **`YOUTUBE_PUBLISH_PROXY_ENABLED=true`**. Send `Authorization: Bearer <access_token>` and multipart fields `file`, `title`, optional `description`. New uploads default to **privacyStatus: private**; change visibility in YouTube Studio.
 
 ## Spotify
 
-- **Upload:** Spotify does **not** offer a public API for arbitrary third-party uploads directly onto artist profiles the way SoundCloud does. Releases typically flow **aggregator → Spotify**. Spotify for Artists surfaces releases once delivered by the label or distributor.
-- **Sonara:** `/api/v1/publish/spotify` returns `501 NOT_SUPPORTED` with that explanation. Export WAV or mastered files for your distributor pipeline.
+- **Upload:** Spotify does **not** expose a public API for arbitrary third-party audio uploads straight onto artist profiles like SoundCloud. Releases flow **aggregator/distributor → Spotify**; Spotify for Artists is for releases already delivered.
+- **Sonara:** `/api/v1/publish/spotify` returns **501** with that explanation. Export mastered audio for your distributor workflow.
 
 ## Middleware
 
-Routes under `/api/v1/publish/*` are excluded from auth middleware so optional publishing proxies work without a logged-in Sonara session (SoundCloud auth is still required via `Authorization: OAuth …`).
+`/api/v1/publish/*` is excluded from Sonara session middleware so proxies work without logging into Sonara (each platform still requires its own OAuth token).
