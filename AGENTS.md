@@ -10,7 +10,7 @@ Sonara is a **single Next.js 15 app**. Core Studio/DJ audio runs **client-side**
 
 **Operational blueprint:** [`docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md`](docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md).
 
-AI generation/stems/mastering remain **mocked on the client** (`src/lib/ai/mock.ts`) until later phases wire `/api/v1/generate` & workers.
+AI generation/stems/mastering remain **mocked on the client** (`src/lib/ai/mock.ts`) until later phases wire `/api/v1/generate` & workers. **Phase 4 PRD** ([`docs/PRD_v1_2_GENERATION.md`](docs/PRD_v1_2_GENERATION.md)) plans the server-side generation path (Stable Audio Open via Replicate) behind an `AI_PROVIDER=mock|replicate` switch; implementation lands in a follow-up PR. Until then, **do not enable** `AI_PROVIDER=replicate` — the routes are still stubs.
 
 ### Running the application
 
@@ -54,6 +54,10 @@ Studio **Publish** uses **server-side OAuth** (tokens encrypted with **`PUBLISH_
 Connection summary: **`GET /api/v1/publish/connections`**. Middleware still excludes **`/api/v1/publish/*`** from Edge auth matching; routes gate with **`auth()`**.
 
 See **`docs/publishing-third-party.md`** and **`docs/SECRETS_OPERATOR_GUIDE.md`**.
+
+### AI generation (Phase 4 PRD only)
+
+[`docs/PRD_v1_2_GENERATION.md`](docs/PRD_v1_2_GENERATION.md) specifies the planned server path: Studio -> `POST /api/v1/generate` -> Replicate prediction with webhook -> `POST /api/v1/webhooks/replicate` (HMAC-verified) -> browser polls `GET /api/v1/jobs/:id`. The mock provider in [`src/lib/ai/mock.ts`](src/lib/ai/mock.ts) stays the default and the source of truth for the `MusicGenerationProvider` contract. Planned env vars (not yet read by any code): `AI_PROVIDER`, `REPLICATE_API_TOKEN`, `REPLICATE_STABLE_AUDIO_VERSION`, `REPLICATE_WEBHOOK_SIGNING_SECRET`, `REPLICATE_WEBHOOK_PUBLIC_BASE_URL`, `AI_GENERATE_DAILY_SECONDS_LIMIT`, `NEXT_PUBLIC_AI_GENERATE_BACKEND`.
 
 ### Lint / Build / Test
 

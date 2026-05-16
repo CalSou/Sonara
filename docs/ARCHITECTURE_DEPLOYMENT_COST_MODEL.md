@@ -17,6 +17,7 @@ Version: 1.0 | Date: 3 May 2026 | Audience: Engineering (Cursor) | CONFIDENTIAL
 5. [Monitoring & Observability](#5-monitoring--observability)
 6. [Security Architecture](#6-security-architecture)
 7. [Local Development Setup](#7-local-development-setup)
+8. [Phase Roadmap Updates (post-v1.0)](#8-phase-roadmap-updates-post-v10)
 
 ---
 
@@ -530,10 +531,40 @@ New developer onboarding checklist:
 
 ---
 
+## 8. Phase Roadmap Updates (post-v1.0)
+
+This section is appended as Sonara ships new phases. See the per-phase PRD supplements for full detail.
+
+### 8.1 Phase 3 — Publishing (shipped)
+
+Server-side OAuth for SoundCloud and YouTube with AES-256-GCM encrypted refresh tokens, browser-driven resumable YouTube uploads, and a Spotify distributor handoff (24-bit WAV + deep link). Adds `publish_connections` and `release_drafts` tables (`drizzle/0001_publish_connections.sql`). See [`docs/PRD_v1_1_PUBLISHING.md`](PRD_v1_1_PUBLISHING.md) and [`docs/publishing-third-party.md`](publishing-third-party.md).
+
+### 8.2 Phase 4 — Server-driven music generation (planned)
+
+| Aspect | Value |
+| :--- | :--- |
+| Scope | Wire `/api/v1/generate` to **Stable Audio Open** on **Replicate** behind the existing `MusicGenerationProvider` abstraction. Stems, mastering, analysis, auto-mix stay on client mocks. |
+| Schema | **No migration.** Reuses existing `generation_jobs` and `audio_assets` from §2.2. |
+| Pattern | Async: `POST /generate` returns `202 { job_id }`; Replicate posts to `/api/v1/webhooks/replicate` (HMAC-verified); browser polls `/api/v1/jobs/:id`. |
+| Storage | Optional re-host to Supabase Storage when `SUPABASE_*` is configured; otherwise Replicate CDN URL (degraded). |
+| Spend control | Per-request `durationSec` cap (47 s) + per-user daily seconds cap (`AI_GENERATE_DAILY_SECONDS_LIMIT`, default 600). Fits inside the §4.2 envelope. |
+| Mock fallback | `AI_PROVIDER=mock` (default) keeps guest mode and CI on `src/lib/ai/mock.ts`. |
+| Detail | [`docs/PRD_v1_2_GENERATION.md`](PRD_v1_2_GENERATION.md) |
+
+### 8.3 Future phases (parked)
+
+- Real stem separation (HTDemucs on Replicate), reusing the Phase 4 job + webhook plumbing.
+- Real mastering as a server-side FFmpeg `loudnorm` + limiter pipeline (CPU-only, no GPU cost).
+- Real BPM / key analysis.
+- Project payload migration off base64 WAVs to `audio_assets` URLs.
+
+---
+
 ## Document Control
 
 | Version | Date | Author | Change |
 | :--- | :--- | :--- | :--- |
 | 1.0 | 3 May 2026 | Claude (Anthropic) | Initial release — complements Sonara PRD v1.0 |
+| 1.1 | 16 May 2026 | Cursor | Added §8 Phase Roadmap Updates with Phase 4 (Generation) plan reference |
 
 This document is a companion to **Sonara PRD v1.0**. All section cross-references (§) refer to the PRD. Both documents should be versioned together. Questions or updates: raise a GitHub issue tagged `docs`.
