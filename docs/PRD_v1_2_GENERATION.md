@@ -1,6 +1,6 @@
 # Sonara PRD supplement v1.2 — Server-driven Music Generation
 
-**Status:** Phase 4 engineering target (PRD only — no code lands with this document)
+**Status:** Phase 4 — **implemented** on `main` (see `src/app/api/v1/generate`, `src/lib/ai/server/*`, Studio `handleGenerate`). This document remains the normative product/technical contract.
 **Depends on:** Sonara PRD v1.0, Architecture doc, PRD v1.1 Publishing
 **Audience:** Product, engineering, operators
 
