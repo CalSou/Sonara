@@ -22,6 +22,7 @@ export default function Home() {
         <nav className="flex items-center gap-6 text-sm text-text-dim">
           <Link href="/studio" className="hover:text-text">Studio</Link>
           <Link href="/dj" className="hover:text-text">DJ Console</Link>
+          <Link href="/design" className="hover:text-text">Design</Link>
         </nav>
       </header>
 
@@ -38,7 +39,7 @@ export default function Home() {
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-balance text-text-dim">
             Generate ideas from a prompt, separate stems, master your tracks, and
-            spin a live two-deck DJ set — with an AI co-pilot that beatmatches
+            spin a live two-deck DJ set with an AI co-pilot that beatmatches
             and plans your transitions.
           </p>
 

@@ -11,6 +11,7 @@ import { Waveform } from "@/components/ui/Waveform";
 import { Button } from "@/components/ui/Button";
 import { PanKnob } from "@/components/studio/PanKnob";
 import { clsx } from "@/lib/util";
+import { DEFAULT_GENRE_ID, MUSIC_GENRES } from "@/lib/music/genres";
 import type { StudioTrack } from "@/lib/store/studioStore";
 
 interface Props {
@@ -31,6 +32,7 @@ interface Props {
   onVolume: (v: number) => void;
   onPan: (v: number) => void;
   onRename: (name: string) => void;
+  onGenreChange: (genreId: string) => void;
 }
 
 export function TrackLane({
@@ -50,6 +52,7 @@ export function TrackLane({
   onVolume,
   onPan,
   onRename,
+  onGenreChange,
 }: Props) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const trackDur = track.buffer?.duration ?? 0;
@@ -66,7 +69,7 @@ export function TrackLane({
         selected && "bg-accent/[0.06] ring-1 ring-inset ring-accent/20",
       )}
     >
-      {/* Track header — mockup-style strip */}
+      {/* Track header (mock-style strip) */}
       <div
         className="flex w-[min(220px,32vw)] shrink-0 flex-col justify-center gap-2.5 border-r border-line/70 bg-bg-deep/40 p-3"
         style={{ borderLeftWidth: 4, borderLeftColor: track.color }}
@@ -89,6 +92,31 @@ export function TrackLane({
             <Trash2 className="h-3.5 w-3.5 text-text-mute hover:text-red-400" />
           </button>
         </div>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-text-mute">
+            Genre
+          </span>
+          <select
+            value={
+              MUSIC_GENRES.some((g) => g.id === track.genreId)
+                ? track.genreId
+                : DEFAULT_GENRE_ID
+            }
+            onChange={(e) => {
+              e.stopPropagation();
+              onGenreChange(e.target.value);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full rounded-lg border border-line/80 bg-bg-deep px-2 py-1 text-[11px] text-text outline-none focus:border-accent/50"
+          >
+            {MUSIC_GENRES.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="flex items-center gap-2">
           <button
@@ -144,7 +172,7 @@ export function TrackLane({
         </div>
       </div>
 
-      {/* Waveform well — shared timeline playhead */}
+      {/* Waveform well + shared timeline playhead */}
       <div className="relative flex min-h-[96px] flex-1 items-stretch p-3">
         {track.buffer ? (
           <div className="relative w-full overflow-hidden rounded-xl border border-line/80 bg-[#06060c]/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">

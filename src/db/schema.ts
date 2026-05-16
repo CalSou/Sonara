@@ -103,6 +103,17 @@ export const generationJobStatusEnum = pgEnum("generation_job_status", [
   "failed",
 ]);
 
+export const publishProviderEnum = pgEnum("publish_provider", [
+  "soundcloud",
+  "youtube",
+]);
+
+export const releaseDraftStatusEnum = pgEnum("release_draft_status", [
+  "draft",
+  "exported",
+  "linked_out",
+]);
+
 export const projects = pgTable(
   "projects",
   {
@@ -195,6 +206,59 @@ export const generationJobs = pgTable(
   }),
 );
 
+export const publishConnections = pgTable(
+  "publish_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: publishProviderEnum("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    accessTokenCipher: text("access_token_cipher").notNull(),
+    accessTokenExpires: timestamp("access_token_expires", {
+      withTimezone: true,
+    }).notNull(),
+    refreshTokenCipher: text("refresh_token_cipher"),
+    scope: text("scope"),
+    connectedAt: timestamp("connected_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => ({
+    userIdx: index("publish_connections_user_idx").on(t.userId),
+  }),
+);
+
+export const releaseDrafts = pgTable(
+  "release_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    metadataJson: jsonb("metadata_json").notNull(),
+    deliveryAssetId: uuid("delivery_asset_id").references(() => audioAssets.id, {
+      onDelete: "set null",
+    }),
+    distributor: text("distributor").notNull(),
+    status: releaseDraftStatusEnum("status").notNull().default("draft"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (t) => ({
+    userIdx: index("release_drafts_user_idx").on(t.userId),
+  }),
+);
+
 export const projectsRelations = relations(projects, ({ one }) => ({
   user: one(users, { fields: [projects.userId], references: [users.id] }),
 }));
@@ -209,4 +273,16 @@ export const audioAssetsRelations = relations(audioAssets, ({ one }) => ({
 
 export const generationJobsRelations = relations(generationJobs, ({ one }) => ({
   user: one(users, { fields: [generationJobs.userId], references: [users.id] }),
+}));
+
+export const publishConnectionsRelations = relations(publishConnections, ({ one }) => ({
+  user: one(users, { fields: [publishConnections.userId], references: [users.id] }),
+}));
+
+export const releaseDraftsRelations = relations(releaseDrafts, ({ one }) => ({
+  user: one(users, { fields: [releaseDrafts.userId], references: [users.id] }),
+  deliveryAsset: one(audioAssets, {
+    fields: [releaseDrafts.deliveryAssetId],
+    references: [audioAssets.id],
+  }),
 }));

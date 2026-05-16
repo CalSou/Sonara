@@ -1,0 +1,3 @@
+{"prompt":"eval skeleton house","genreId":"house","expectedBpm":124,"durationSec":1}
+{"prompt":"eval skeleton techno","genreId":"techno","expectedBpm":132,"durationSec":1}
+{"prompt":"eval skeleton ambient","genreId":"ambient","expectedBpm":70,"durationSec":1}

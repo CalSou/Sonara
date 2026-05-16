@@ -23,7 +23,7 @@ AI generation/stems/mastering remain **mocked on the client** (`src/lib/ai/mock.
 - **Production secret:** `AUTH_SECRET` or `NEXTAUTH_SECRET` is required at **runtime** in production. `next build` skips that throw when `NEXT_PHASE` is a compiler phase or `npm_lifecycle_event=build` (see `resolveAuthSecret` in `auth.config.ts`).
 - Build may still warn about **jose / CompressionStream** on Edge — known NextAuth + middleware noise unless we swap JWT strategy.
 
-- `NEXT_PUBLIC_REQUIRE_AUTH=true` — middleware protects `/studio`, `/dj`, and `/api/v1/*` (except `/api/v1/auth/*` and `/api/v1/webhooks/*`). Unauthenticated users are redirected to `/guest-login`.
+- `NEXT_PUBLIC_REQUIRE_AUTH=true` — middleware protects `/studio`, `/dj`, and `/api/v1/*` (except `/api/v1/auth/*`, `/api/v1/webhooks/*`, and `/api/v1/publish/*`). Unauthenticated users are redirected to `/guest-login`.
 - If **`DATABASE_URL` is unset** and `NEXT_PUBLIC_ALLOW_GUEST_WITHOUT_DB` is not `"false"`, Studio/DJ stay reachable **without** login (CI/local prototype).
 - Matcher includes **`/api/v1`** (exact path) plus `/api/v1/:path*` so routes like `/api/v1/projects` are guarded.
 
@@ -43,9 +43,21 @@ When **signed in** (credentials or OAuth), Studio **GET**s `/api/v1/projects` on
 
 Payload uses `src/lib/studio/projectSync.ts` (base64 WAV per track for dev round-trip; production should move to storage URLs + `audio_assets`).
 
+### Publish tab (Phase 3)
+
+Studio **Publish** uses **server-side OAuth** (tokens encrypted with **`PUBLISH_TOKEN_KEY`**) instead of pasted secrets:
+
+- **SoundCloud:** `GET .../publish/soundcloud/connect` → callback → `POST .../soundcloud/upload`
+- **YouTube:** `GET .../publish/youtube/connect` → callback → `POST .../youtube/upload/init` then browser **chunked PUT** to Google’s `uploadUrl`, optional `POST .../finalize`
+- **Spotify path:** `POST .../publish/spotify/handoff` saves release metadata + distributor deep link; **24-bit WAV** export is client-side (`audioBufferToWav24`). Legacy **`POST /api/v1/publish/spotify`** remains **501**.
+
+Connection summary: **`GET /api/v1/publish/connections`**. Middleware still excludes **`/api/v1/publish/*`** from Edge auth matching; routes gate with **`auth()`**.
+
+See **`docs/publishing-third-party.md`** and **`docs/SECRETS_OPERATOR_GUIDE.md`**.
+
 ### Lint / Build / Test
 
-- `npm run lint`, `npm run type-check`, `npm run build`, `npm run test`, `npm run test:coverage`.
+- `npm run lint`, `npm run type-check`, `npm run build`, `npm run test`, `npm run test:coverage`. Offline AI/publish eval harness: `npm run eval` (see `eval/README.md`, separate Vitest config; not part of coverage thresholds).
 
 CI (`.github/workflows/ci.yml`): install → lint → type-check → test:coverage → build.
 

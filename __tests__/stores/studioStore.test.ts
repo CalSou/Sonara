@@ -15,6 +15,7 @@ function reset() {
     addTrack: getState().addTrack,
     removeTrack: getState().removeTrack,
     setBuffer: getState().setBuffer,
+    setGenreId: getState().setGenreId,
     setName: getState().setName,
     setVolume: getState().setVolume,
     setPan: getState().setPan,
@@ -43,6 +44,7 @@ describe("studioStore", () => {
       expect(track!.pan).toBe(0);
       expect(track!.mute).toBe(false);
       expect(track!.solo).toBe(false);
+      expect(track!.genreId).toBeDefined();
     });
 
     it("accepts partial overrides", () => {
@@ -105,6 +107,7 @@ describe("studioStore", () => {
           id: "x1",
           name: "Imported",
           color: "#a855f7",
+          genreId: "house",
           buffer: null,
           peaks: null,
           volume: 0.5,
@@ -125,6 +128,7 @@ describe("studioStore", () => {
           id: "a",
           name: "One",
           color: "#fff",
+          genreId: "electronic",
           buffer: null,
           peaks: null,
           volume: 1,
@@ -136,6 +140,7 @@ describe("studioStore", () => {
           id: "b",
           name: "Two",
           color: "#000",
+          genreId: "electronic",
           buffer: null,
           peaks: null,
           volume: 1,
