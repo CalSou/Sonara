@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { getDb } from "@/db/index";
 import { hasPublishTokenKey } from "@/lib/crypto/tokens";
 import { oauthCookieOptions, publishCookies } from "@/lib/publish/cookieNames";
 import { getAppOrigin, youtubeRedirectUri } from "@/lib/publish/appOrigin";
 import { generateOAuthState } from "@/lib/publish/oauthPkce";
+import { assertPublishCryptoProduction } from "@/lib/publish/publishEnv";
 
 export const runtime = "nodejs";
 
 const YT_SCOPE = "https://www.googleapis.com/auth/youtube.upload";
 
 export async function GET() {
+  assertPublishCryptoProduction();
   const session = await auth();
   const origin = getAppOrigin();
   if (!session?.user?.id) {

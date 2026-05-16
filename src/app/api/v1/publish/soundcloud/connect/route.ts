@@ -9,10 +9,12 @@ import {
   generateCodeVerifier,
   generateOAuthState,
 } from "@/lib/publish/oauthPkce";
+import { assertPublishCryptoProduction } from "@/lib/publish/publishEnv";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  assertPublishCryptoProduction();
   const session = await auth();
   const origin = getAppOrigin();
   if (!session?.user?.id) {

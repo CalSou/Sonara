@@ -3,72 +3,16 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { getDb } from "@/db/index";
 import { publishConnections } from "@/db/schema";
 import { decryptToken, encryptToken } from "@/lib/crypto/tokens";
+import {
+  refreshGoogleAccessToken,
+  refreshSoundCloudAccessToken,
+  revokeGoogleOAuthToken,
+} from "@/lib/publish/oauthTokenRefresh";
+import { assertPublishCryptoProduction } from "@/lib/publish/publishEnv";
 
 export type PublishProvider = "soundcloud" | "youtube";
 
 type Db = NonNullable<ReturnType<typeof getDb>>;
-
-async function refreshSoundCloud(refreshToken: string): Promise<{
-  access_token: string;
-  expires_in: number;
-  refresh_token?: string;
-}> {
-  const clientId = process.env.SOUNDCLOUD_CLIENT_ID;
-  const clientSecret = process.env.SOUNDCLOUD_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error("SOUNDCLOUD_CLIENT_ID/SECRET not configured");
-  }
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
-    client_id: clientId,
-    client_secret: clientSecret,
-  });
-  const res = await fetch("https://secure.soundcloud.com/oauth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!res.ok) {
-    throw new Error(`SoundCloud token refresh failed: ${await res.text()}`);
-  }
-  return res.json() as Promise<{
-    access_token: string;
-    expires_in: number;
-    refresh_token?: string;
-  }>;
-}
-
-async function refreshGoogle(refreshToken: string): Promise<{
-  access_token: string;
-  expires_in: number;
-  refresh_token?: string;
-}> {
-  const clientId = process.env.YOUTUBE_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.YOUTUBE_OAUTH_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error("YOUTUBE_OAUTH_CLIENT_ID/SECRET not configured");
-  }
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
-    client_id: clientId,
-    client_secret: clientSecret,
-  });
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!res.ok) {
-    throw new Error(`Google token refresh failed: ${await res.text()}`);
-  }
-  return res.json() as Promise<{
-    access_token: string;
-    expires_in: number;
-    refresh_token?: string;
-  }>;
-}
 
 export async function upsertPublishConnection(
   db: Db,
@@ -82,6 +26,7 @@ export async function upsertPublishConnection(
     scope?: string | null;
   },
 ) {
+  assertPublishCryptoProduction();
   const existing = await db.query.publishConnections.findFirst({
     where: (t, { eq: e, and: a, isNull: n }) =>
       a(e(t.userId, params.userId), e(t.provider, params.provider), n(t.revokedAt)),
@@ -112,7 +57,11 @@ export async function upsertPublishConnection(
   }
 }
 
-export async function revokePublishConnection(db: Db, userId: string, provider: PublishProvider) {
+export async function revokePublishConnection(
+  db: Db,
+  userId: string,
+  provider: PublishProvider,
+) {
   await db
     .update(publishConnections)
     .set({ revokedAt: new Date() })
@@ -125,6 +74,35 @@ export async function revokePublishConnection(db: Db, userId: string, provider: 
     );
 }
 
+export async function disconnectPublishProviderBestEffort(
+  db: Db,
+  userId: string,
+  provider: PublishProvider,
+) {
+  assertPublishCryptoProduction();
+  const row = await db.query.publishConnections.findFirst({
+    where: (t, { eq: e, and: a, isNull: n }) =>
+      a(e(t.userId, userId), e(t.provider, provider), n(t.revokedAt)),
+  });
+
+  if (row && process.env.PUBLISH_MOCK_PROVIDERS !== "true") {
+    try {
+      if (provider === "youtube") {
+        const refreshPlain = row.refreshTokenCipher
+          ? decryptToken(row.refreshTokenCipher)
+          : null;
+        const accessPlain = decryptToken(row.accessTokenCipher);
+        await revokeGoogleOAuthToken(refreshPlain ?? accessPlain);
+      }
+      // SoundCloud partner API does not expose a stable public revoke URL; DB revoke only.
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  await revokePublishConnection(db, userId, provider);
+}
+
 export async function withFreshAccessToken<T>(
   db: Db,
   userId: string,
@@ -134,6 +112,8 @@ export async function withFreshAccessToken<T>(
   if (process.env.PUBLISH_MOCK_PROVIDERS === "true") {
     return fn(process.env.PUBLISH_MOCK_ACCESS_TOKEN ?? "mock-access-token");
   }
+
+  assertPublishCryptoProduction();
 
   const row = await db.query.publishConnections.findFirst({
     where: (t, { eq: e, and: a, isNull: n }) =>
@@ -156,7 +136,7 @@ export async function withFreshAccessToken<T>(
       throw new Error("TOKEN_EXPIRED_NO_REFRESH");
     }
     if (provider === "soundcloud") {
-      const tok = await refreshSoundCloud(refreshPlain);
+      const tok = await refreshSoundCloudAccessToken(refreshPlain);
       accessToken = tok.access_token;
       const nextRefresh = tok.refresh_token ?? refreshPlain;
       await db
@@ -169,7 +149,7 @@ export async function withFreshAccessToken<T>(
         })
         .where(eq(publishConnections.id, row.id));
     } else {
-      const tok = await refreshGoogle(refreshPlain);
+      const tok = await refreshGoogleAccessToken(refreshPlain);
       accessToken = tok.access_token;
       const nextRefresh = tok.refresh_token ?? refreshPlain;
       await db

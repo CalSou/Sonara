@@ -186,13 +186,14 @@ export function PublishPanel({
       }
       return { blob: pickedFile, filename: pickedFile.name || "upload" };
     }
-    const blob = await getSelectedWavBlob();
-    if (!blob) {
+    const buf = getSelectedAudioBuffer();
+    if (!buf) {
       log("SoundCloud: select a track with audio.");
       return null;
     }
+    const ab = audioBufferToWav24(buf);
     const base = (selectedTrackName ?? "sonara-track").replace(/\s+/g, "-");
-    return { blob, filename: `${base}.wav` };
+    return { blob: new Blob([ab], { type: "audio/wav" }), filename: `${base}-24bit.wav` };
   }
 
   async function exportDelivery16() {
@@ -244,6 +245,7 @@ export function PublishPanel({
       if (description.trim()) fd.append("description", description.trim());
       const tags = [genreLabel(selectedGenreId), tagList].filter(Boolean).join(", ").slice(0, 500);
       if (tags.trim()) fd.append("tag_list", tags.trim());
+      fd.append("genreId", selectedGenreId);
       fd.append("sharing", sharing);
       fd.append("file", pack.blob, pack.filename);
 
@@ -434,7 +436,7 @@ export function PublishPanel({
             />
             <span>
               <span className="flex items-center gap-1 font-medium text-text">
-                <Disc3 className="h-3.5 w-3.5 text-accent" /> Selected studio track (16-bit WAV upload)
+                <Disc3 className="h-3.5 w-3.5 text-accent" /> Selected studio track (24-bit WAV upload)
               </span>
             </span>
           </label>
@@ -749,7 +751,7 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-/** Browser-side 16-bit WAV from timeline (SoundCloud upload from track). */
+/** Browser-side 16-bit WAV from timeline (shared Studio export helper). Publish → SoundCloud “track” uses 24-bit via `audioBufferToWav24` in-panel. */
 export async function bufferToWavBlob(buffer: AudioBuffer): Promise<Blob> {
   const ab = audioBufferToWav(buffer);
   return new Blob([ab], { type: "audio/wav" });
