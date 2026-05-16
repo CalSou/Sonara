@@ -2,7 +2,7 @@
 
 **Companion Document to PRD v1.0**
 
-Version: 1.0 | Date: 3 May 2026 | Audience: Engineering (Cursor) | CONFIDENTIAL
+Version: 1.3 | Date: 16 May 2026 | Audience: Engineering (Cursor) | CONFIDENTIAL
 
 > **PURPOSE** — This document complements the Sonara PRD (v1.0) with the operational engineering detail Cursor needs to build and ship a production system: a definitive infrastructure topology, a complete CI/CD pipeline specification, and a granular cost model projecting spend from free tier through to 10,000 active users. All PRD section cross-references are noted in brackets (e.g. §10.3).
 
@@ -17,7 +17,7 @@ Version: 1.0 | Date: 3 May 2026 | Audience: Engineering (Cursor) | CONFIDENTIAL
 5. [Monitoring & Observability](#5-monitoring--observability)
 6. [Security Architecture](#6-security-architecture)
 7. [Local Development Setup](#7-local-development-setup)
-8. [Phase 4 — Server generation](#8-phase-4--server-generation)
+8. [Phase Roadmap Updates (post-v1.0)](#8-phase-roadmap-updates-post-v10)
 
 ---
 
@@ -526,13 +526,23 @@ New developer onboarding checklist:
 3. **Copy env template:** `cp .env.example .env.local` and fill in the local values
 4. **Apply schema:** `npm run db:migrate` (applies SQL in `drizzle/`) or `npm run db:push` for schema sync without migration files
 5. **Run dev server:** `npm run dev` — application available at `http://localhost:3000`
-6. **Verify AI defaults:** With `NEXT_PUBLIC_AI_GENERATE_BACKEND=mock` (default), Studio generation stays on the in-browser procedural mock. For live Replicate generation see §8.
+6. **Verify AI defaults:** With `NEXT_PUBLIC_AI_GENERATE_BACKEND=mock` (default), Studio generation stays on the in-browser procedural mock. For live Replicate generation see §8.2.
 
 ---
 
-## 8. Phase 4 — Server generation
+## 8. Phase Roadmap Updates (post-v1.0)
 
-Production path for **text-to-music** uses **Stable Audio Open** on **Replicate** (`stability-ai/stable-audio-open-1.0`, version pinned via `REPLICATE_STABLE_AUDIO_VERSION`). Async contract:
+This section is appended as Sonara ships new phases. See the per-phase PRD supplements for full detail.
+
+### 8.1 Phase 3 — Publishing (shipped)
+
+Server-side OAuth for SoundCloud and YouTube with AES-256-GCM encrypted refresh tokens, browser-driven resumable YouTube uploads, and a Spotify distributor handoff (24-bit WAV + deep link). Adds `publish_connections` and `release_drafts` tables (`drizzle/0001_publish_connections.sql`). See [`docs/PRD_v1_1_PUBLISHING.md`](PRD_v1_1_PUBLISHING.md) and [`docs/publishing-third-party.md`](publishing-third-party.md).
+
+### 8.2 Phase 4 — Server-driven music generation (shipped)
+
+Normative PRD: [`PRD_v1_2_GENERATION.md`](PRD_v1_2_GENERATION.md).
+
+**Runtime contract:**
 
 | Step | Endpoint |
 | :--- | :--- |
@@ -542,6 +552,21 @@ Production path for **text-to-music** uses **Stable Audio Open** on **Replicate*
 
 **Env:** `AI_PROVIDER=replicate`, `REPLICATE_API_TOKEN`, `REPLICATE_STABLE_AUDIO_VERSION`, `REPLICATE_WEBHOOK_SIGNING_SECRET`, `DATABASE_URL`, optional `SUPABASE_*` to re-host WAVs. **Studio:** set `NEXT_PUBLIC_AI_GENERATE_BACKEND=server` so the client probes `/api/v1/ai/capabilities` and uses the server route when `generateBackend === "replicate"`.
 
+| Aspect | Value |
+| :--- | :--- |
+| Scope | **Stable Audio Open** on **Replicate** (`stability-ai/stable-audio-open-1.0`, version pinned via `REPLICATE_STABLE_AUDIO_VERSION`). Stems, mastering, analysis, auto-mix stay on client mocks. |
+| Schema | **No migration.** Reuses existing `generation_jobs` and `audio_assets` from §2.2. |
+| Storage | Optional re-host to Supabase Storage when `SUPABASE_*` is configured; otherwise Replicate CDN URL (degraded). |
+| Spend control | Per-request `durationSec` cap (47 s) + per-user daily seconds cap (`AI_GENERATE_DAILY_SECONDS_LIMIT`, default 600). Fits inside the §4.2 envelope. |
+| Mock fallback | `AI_PROVIDER=mock` (default) keeps guest mode and CI on `src/lib/ai/mock.ts`. |
+
+### 8.3 Future phases (parked)
+
+- Real stem separation (HTDemucs on Replicate), reusing the Phase 4 job + webhook plumbing.
+- Real mastering as a server-side FFmpeg `loudnorm` + limiter pipeline (CPU-only, no GPU cost).
+- Real BPM / key analysis.
+- Project payload migration off base64 WAVs to `audio_assets` URLs.
+
 ---
 
 ## Document Control
@@ -549,6 +574,6 @@ Production path for **text-to-music** uses **Stable Audio Open** on **Replicate*
 | Version | Date | Author | Change |
 | :--- | :--- | :--- | :--- |
 | 1.0 | 3 May 2026 | Claude (Anthropic) | Initial release — complements Sonara PRD v1.0 |
-| 1.2 | 16 May 2026 | Cursor | §8 Phase 4 server generation + checklist env rename |
+| 1.3 | 16 May 2026 | Cursor | §8 roadmap: Phase 4 marked shipped; merged ops table + PRD reference (conflict resolution PR #14 + main) |
 
 This document is a companion to **Sonara PRD v1.0**. All section cross-references (§) refer to the PRD. Both documents should be versioned together. Questions or updates: raise a GitHub issue tagged `docs`.
