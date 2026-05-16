@@ -57,6 +57,14 @@ For Drizzle + NextAuth + `/api/v1/*`, copy [.env.example](.env.example) to `.env
 - **Publishing:** [`docs/publishing-third-party.md`](docs/publishing-third-party.md) — OAuth, encrypted tokens, YouTube resumable uploads, Spotify distributor handoff.
 - **Cursor Cloud agents:** [`AGENTS.md`](AGENTS.md).
 
+## Testing & offline eval
+
+```bash
+npm run test           # Vitest unit tests (`npm run test:coverage` for thresholds)
+npm run eval           # Offline harness: mock AI + publish contracts — see [`eval/README.md`](eval/README.md)
+npm run eval:watch     # Eval suite in watch mode
+```
+
 ## Project structure
 
 ```

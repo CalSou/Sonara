@@ -57,7 +57,7 @@ See **`docs/publishing-third-party.md`** and **`docs/SECRETS_OPERATOR_GUIDE.md`*
 
 ### Lint / Build / Test
 
-- `npm run lint`, `npm run type-check`, `npm run build`, `npm run test`, `npm run test:coverage`.
+- `npm run lint`, `npm run type-check`, `npm run build`, `npm run test`, `npm run test:coverage`. Offline AI/publish eval harness: `npm run eval` (see `eval/README.md`, separate Vitest config; not part of coverage thresholds).
 
 CI (`.github/workflows/ci.yml`): install → lint → type-check → test:coverage → build.
 
