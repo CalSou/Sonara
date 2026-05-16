@@ -2,7 +2,7 @@
 
 **Companion Document to PRD v1.0**
 
-Version: 1.0 | Date: 3 May 2026 | Audience: Engineering (Cursor) | CONFIDENTIAL
+Version: 1.3 | Date: 16 May 2026 | Audience: Engineering (Cursor) | CONFIDENTIAL
 
 > **PURPOSE** — This document complements the Sonara PRD (v1.0) with the operational engineering detail Cursor needs to build and ship a production system: a definitive infrastructure topology, a complete CI/CD pipeline specification, and a granular cost model projecting spend from free tier through to 10,000 active users. All PRD section cross-references are noted in brackets (e.g. §10.3).
 
@@ -512,8 +512,7 @@ services:
     ports: ['9000:9000', '9001:9001']
     volumes: ['miniodata:/data']
 
-  # Replicate is not emulated locally — use mocked AI providers
-  # Set NEXT_PUBLIC_AI_PROVIDER=mock in .env.local for development
+  # Replicate is not emulated locally — use client AI mock by default (`NEXT_PUBLIC_AI_GENERATE_BACKEND=mock`)
 
 volumes:
   pgdata:
@@ -527,7 +526,7 @@ New developer onboarding checklist:
 3. **Copy env template:** `cp .env.example .env.local` and fill in the local values
 4. **Apply schema:** `npm run db:migrate` (applies SQL in `drizzle/`) or `npm run db:push` for schema sync without migration files
 5. **Run dev server:** `npm run dev` — application available at `http://localhost:3000`
-6. **Verify AI mocks:** With `NEXT_PUBLIC_AI_PROVIDER=mock`, all AI features return realistic test data without hitting Replicate.
+6. **Verify AI defaults:** With `NEXT_PUBLIC_AI_GENERATE_BACKEND=mock` (default), Studio generation stays on the in-browser procedural mock. For live Replicate generation see §8.2.
 
 ---
 
@@ -539,17 +538,27 @@ This section is appended as Sonara ships new phases. See the per-phase PRD suppl
 
 Server-side OAuth for SoundCloud and YouTube with AES-256-GCM encrypted refresh tokens, browser-driven resumable YouTube uploads, and a Spotify distributor handoff (24-bit WAV + deep link). Adds `publish_connections` and `release_drafts` tables (`drizzle/0001_publish_connections.sql`). See [`docs/PRD_v1_1_PUBLISHING.md`](PRD_v1_1_PUBLISHING.md) and [`docs/publishing-third-party.md`](publishing-third-party.md).
 
-### 8.2 Phase 4 — Server-driven music generation (planned)
+### 8.2 Phase 4 — Server-driven music generation (shipped)
+
+Normative PRD: [`PRD_v1_2_GENERATION.md`](PRD_v1_2_GENERATION.md).
+
+**Runtime contract:**
+
+| Step | Endpoint |
+| :--- | :--- |
+| Queue | `POST /api/v1/generate` → `202 { job_id }` |
+| Callback | `POST /api/v1/webhooks/replicate` (Svix-style signed webhook) |
+| Poll | `GET /api/v1/jobs/:id` → `{ status, audioUrl? }` |
+
+**Env:** `AI_PROVIDER=replicate`, `REPLICATE_API_TOKEN`, `REPLICATE_STABLE_AUDIO_VERSION`, `REPLICATE_WEBHOOK_SIGNING_SECRET`, `DATABASE_URL`, optional `SUPABASE_*` to re-host WAVs. **Studio:** set `NEXT_PUBLIC_AI_GENERATE_BACKEND=server` so the client probes `/api/v1/ai/capabilities` and uses the server route when `generateBackend === "replicate"`.
 
 | Aspect | Value |
 | :--- | :--- |
-| Scope | Wire `/api/v1/generate` to **Stable Audio Open** on **Replicate** behind the existing `MusicGenerationProvider` abstraction. Stems, mastering, analysis, auto-mix stay on client mocks. |
+| Scope | **Stable Audio Open** on **Replicate** (`stability-ai/stable-audio-open-1.0`, version pinned via `REPLICATE_STABLE_AUDIO_VERSION`). Stems, mastering, analysis, auto-mix stay on client mocks. |
 | Schema | **No migration.** Reuses existing `generation_jobs` and `audio_assets` from §2.2. |
-| Pattern | Async: `POST /generate` returns `202 { job_id }`; Replicate posts to `/api/v1/webhooks/replicate` (HMAC-verified); browser polls `/api/v1/jobs/:id`. |
 | Storage | Optional re-host to Supabase Storage when `SUPABASE_*` is configured; otherwise Replicate CDN URL (degraded). |
 | Spend control | Per-request `durationSec` cap (47 s) + per-user daily seconds cap (`AI_GENERATE_DAILY_SECONDS_LIMIT`, default 600). Fits inside the §4.2 envelope. |
 | Mock fallback | `AI_PROVIDER=mock` (default) keeps guest mode and CI on `src/lib/ai/mock.ts`. |
-| Detail | [`docs/PRD_v1_2_GENERATION.md`](PRD_v1_2_GENERATION.md) |
 
 ### 8.3 Future phases (parked)
 
@@ -565,6 +574,6 @@ Server-side OAuth for SoundCloud and YouTube with AES-256-GCM encrypted refresh 
 | Version | Date | Author | Change |
 | :--- | :--- | :--- | :--- |
 | 1.0 | 3 May 2026 | Claude (Anthropic) | Initial release — complements Sonara PRD v1.0 |
-| 1.1 | 16 May 2026 | Cursor | Added §8 Phase Roadmap Updates with Phase 4 (Generation) plan reference |
+| 1.3 | 16 May 2026 | Cursor | §8 roadmap: Phase 4 marked shipped; merged ops table + PRD reference (conflict resolution PR #14 + main) |
 
 This document is a companion to **Sonara PRD v1.0**. All section cross-references (§) refer to the PRD. Both documents should be versioned together. Questions or updates: raise a GitHub issue tagged `docs`.
