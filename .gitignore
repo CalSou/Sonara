@@ -3,6 +3,7 @@ node_modules/
 out/
 dist/
 coverage/
+eval/reports/*.json
 tsconfig.tsbuildinfo
 *.log
 .DS_Store

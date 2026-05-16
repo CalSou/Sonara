@@ -24,7 +24,7 @@ Built with **Next.js 15 (App Router) · TypeScript · Tailwind CSS · Web Audio 
   - **Generate** music from a text prompt (genre catalogue plus keyword inference)
   - **Separate stems** (vocals / drums / bass / other) → each becomes a new track
   - **Master** the selected track (loudness target, brightness, punch)
-  - **Publish**: export WAV; optional SoundCloud proxy (`PUBLISH_PROXY_ENABLED`); YouTube/Spotify documented constraints
+  - **Publish**: OAuth connect for SoundCloud / YouTube upload scope; resumable video uploads to Google from the browser; distributor handoff + 24-bit WAV for Spotify path (see `docs/publishing-third-party.md`)
 
 ### DJ Console (`/dj`)
 
@@ -54,8 +54,16 @@ For Drizzle + NextAuth + `/api/v1/*`, copy [.env.example](.env.example) to `.env
 
 - **FE design mockups:** [`docs/design/`](docs/design/) (landing, Studio, DJ, mobile + register reference images).
 - **Architecture, deployment & cost (Phase 2 target):** [`docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md`](docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md), companion to PRD v1.0 (CONFIDENTIAL).
-- **Publishing:** [`docs/publishing-third-party.md`](docs/publishing-third-party.md) (SoundCloud proxy, YouTube/Spotify constraints).
+- **Publishing:** [`docs/publishing-third-party.md`](docs/publishing-third-party.md) — OAuth, encrypted tokens, YouTube resumable uploads, Spotify distributor handoff.
 - **Cursor Cloud agents:** [`AGENTS.md`](AGENTS.md).
+
+## Testing & offline eval
+
+```bash
+npm run test           # Vitest unit tests (`npm run test:coverage` for thresholds)
+npm run eval           # Offline harness: mock AI + publish contracts — see [`eval/README.md`](eval/README.md)
+npm run eval:watch     # Eval suite in watch mode
+```
 
 ## Project structure
 

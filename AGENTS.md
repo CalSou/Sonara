@@ -43,13 +43,21 @@ When **signed in** (credentials or OAuth), Studio **GET**s `/api/v1/projects` on
 
 Payload uses `src/lib/studio/projectSync.ts` (base64 WAV per track for dev round-trip; production should move to storage URLs + `audio_assets`).
 
-### Publish tab / SoundCloud proxy
+### Publish tab (Phase 3)
 
-Studio includes WAV export and an optional SoundCloud upload proxy at **`POST /api/v1/publish/soundcloud`**. Enable with **`PUBLISH_PROXY_ENABLED=true`** (`.env.local`). See **`docs/publishing-third-party.md`** for OAuth caveats (demo UI sends tokens from the browser; production needs server-side OAuth).
+Studio **Publish** uses **server-side OAuth** (tokens encrypted with **`PUBLISH_TOKEN_KEY`**) instead of pasted secrets:
+
+- **SoundCloud:** `GET .../publish/soundcloud/connect` → callback → `POST .../soundcloud/upload`
+- **YouTube:** `GET .../publish/youtube/connect` → callback → `POST .../youtube/upload/init` then browser **chunked PUT** to Google’s `uploadUrl`, optional `POST .../finalize`
+- **Spotify path:** `POST .../publish/spotify/handoff` saves release metadata + distributor deep link; **24-bit WAV** export is client-side (`audioBufferToWav24`). Legacy **`POST /api/v1/publish/spotify`** remains **501**.
+
+Connection summary: **`GET /api/v1/publish/connections`**. Middleware still excludes **`/api/v1/publish/*`** from Edge auth matching; routes gate with **`auth()`**.
+
+See **`docs/publishing-third-party.md`** and **`docs/SECRETS_OPERATOR_GUIDE.md`**.
 
 ### Lint / Build / Test
 
-- `npm run lint`, `npm run type-check`, `npm run build`, `npm run test`, `npm run test:coverage`.
+- `npm run lint`, `npm run type-check`, `npm run build`, `npm run test`, `npm run test:coverage`. Offline AI/publish eval harness: `npm run eval` (see `eval/README.md`, separate Vitest config; not part of coverage thresholds).
 
 CI (`.github/workflows/ci.yml`): install → lint → type-check → test:coverage → build.
 

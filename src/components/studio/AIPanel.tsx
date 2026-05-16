@@ -22,6 +22,7 @@ interface Props {
   onSeparateStems: () => Promise<void>;
   onMaster: (opts: { brightness: number; punch: number }) => Promise<void>;
   getSelectedWavBlob: () => Promise<Blob | null>;
+  getSelectedAudioBuffer: () => AudioBuffer | null;
   logLines: string[];
   appendLog: (message: string) => void;
 }
@@ -34,6 +35,7 @@ export function AIPanel({
   onSeparateStems,
   onMaster,
   getSelectedWavBlob,
+  getSelectedAudioBuffer,
   logLines,
   appendLog,
 }: Props) {
@@ -266,7 +268,9 @@ export function AIPanel({
             {tab === "publish" && (
               <PublishPanel
                 selectedTrackName={selectedTrackName}
+                selectedGenreId={selectedGenreId}
                 hasSelectedBuffer={hasSelectedBuffer}
+                getSelectedAudioBuffer={getSelectedAudioBuffer}
                 getSelectedWavBlob={getSelectedWavBlob}
                 log={appendLog}
               />

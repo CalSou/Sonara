@@ -325,6 +325,11 @@ export default function StudioPage() {
     return bufferToWavBlob(buf);
   }, [selectedTrack?.buffer]);
 
+  const getSelectedAudioBuffer = useCallback(
+    () => selectedTrack?.buffer ?? null,
+    [selectedTrack?.buffer],
+  );
+
   const handleSeparateStems = async () => {
     if (!selectedTrack?.buffer) return;
     const ctx = getAudioContext();
@@ -523,6 +528,7 @@ export default function StudioPage() {
           onSeparateStems={handleSeparateStems}
           onMaster={handleMaster}
           getSelectedWavBlob={getSelectedWavBlob}
+          getSelectedAudioBuffer={getSelectedAudioBuffer}
           logLines={log}
           appendLog={pushLog}
         />
