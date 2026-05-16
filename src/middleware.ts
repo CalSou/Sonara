@@ -16,6 +16,7 @@ export default auth((req) => {
     path.startsWith("/api/v1/auth/") ||
     path.startsWith("/api/v1/webhooks/") ||
     path.startsWith("/api/v1/publish/") ||
+    path.startsWith("/api/v1/ai/capabilities") ||
     path.startsWith("/guest-login") ||
     path.startsWith("/register") ||
     path.startsWith("/_next") ||

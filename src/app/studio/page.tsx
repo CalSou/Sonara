@@ -54,6 +54,8 @@ export default function StudioPage() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Untitled project");
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  /** True when build asks for server generation AND `/api/v1/ai/capabilities` reports `replicate`. */
+  const [serverGenAvailable, setServerGenAvailable] = useState(false);
 
   const pushLog = useCallback((m: string) => {
     setLog((l) => [...l.slice(-30), `${new Date().toLocaleTimeString()}  ${m}`]);
@@ -80,6 +82,25 @@ export default function StudioPage() {
 
   /** Signed-in + DATABASE_URL on server → cloud save/load available */
   const cloudPersistenceAvailable = status === "authenticated";
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_AI_GENERATE_BACKEND !== "server") {
+      setServerGenAvailable(false);
+      return;
+    }
+    let cancelled = false;
+    void fetch("/api/v1/ai/capabilities")
+      .then((r) => r.json())
+      .then((d: { generateBackend?: string }) => {
+        if (!cancelled) setServerGenAvailable(d.generateBackend === "replicate");
+      })
+      .catch(() => {
+        if (!cancelled) setServerGenAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const applyHydratedState = useCallback(
     async (wire: StudioStateWire) => {
@@ -306,17 +327,119 @@ export default function StudioPage() {
     genreId: string,
   ) => {
     const ctx = getAudioContext();
-    pushLog(`Generating "${prompt}" (${durationSec}s, genre ${genreId})…`);
-    const result = await mockProviders.generation.generate(
-      { prompt, durationSec, genreId },
-      ctx,
-    );
-    let targetId = selectedId;
-    if (!targetId) targetId = addTrack({ name: prompt.slice(0, 22), genreId });
-    setBuffer(targetId, result.buffer);
-    setName(targetId, prompt.slice(0, 28));
-    setGenreId(targetId, genreId);
-    pushLog(`Generated ${result.durationSec}s @ ${result.bpm} BPM`);
+    const POLL_MS = 1500;
+    const MAX_POLLS = 120;
+
+    const useReplicateFlow =
+      process.env.NEXT_PUBLIC_AI_GENERATE_BACKEND === "server" &&
+      serverGenAvailable &&
+      status === "authenticated";
+
+    const logServerHints = () => {
+      if (process.env.NEXT_PUBLIC_AI_GENERATE_BACKEND !== "server") return;
+      if (status !== "authenticated") {
+        pushLog("Sign in to use server-side generation; using local preview engine.");
+      } else if (!serverGenAvailable) {
+        pushLog("Server generation unavailable; using local preview engine.");
+      }
+    };
+
+    const runMock = async (withHints: boolean) => {
+      if (withHints) logServerHints();
+      pushLog(`Generating "${prompt}" (${durationSec}s, genre ${genreId})…`);
+      const result = await mockProviders.generation.generate(
+        { prompt, durationSec, genreId },
+        ctx,
+      );
+      let targetId = useStudioStore.getState().selectedId;
+      if (!targetId) targetId = addTrack({ name: prompt.slice(0, 22), genreId });
+      setBuffer(targetId, result.buffer);
+      setName(targetId, prompt.slice(0, 28));
+      setGenreId(targetId, genreId);
+      pushLog(`Generated ${result.durationSec}s @ ${result.bpm} BPM`);
+    };
+
+    if (!useReplicateFlow) {
+      await runMock(true);
+      return;
+    }
+
+    pushLog(`Queued server generation (${durationSec}s)…`);
+    const res = await fetch("/api/v1/generate", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, durationSec, genreId }),
+    });
+
+    if (res.status === 503) {
+      pushLog("Generation API unavailable (503). Using local preview engine.");
+      await runMock(false);
+      return;
+    }
+
+    if (!res.ok) {
+      let msg = res.statusText;
+      try {
+        const j = (await res.json()) as { error?: string };
+        if (j.error) msg = j.error;
+      } catch {
+        /* ignore */
+      }
+      pushLog(`Server generation failed: ${msg}`);
+      pushLog("Using local preview engine.");
+      await runMock(false);
+      return;
+    }
+
+    const { job_id: jobId } = (await res.json()) as { job_id: string };
+    pushLog(`Job ${jobId} — rendering on Replicate…`);
+
+    let audioUrl: string | null = null;
+    for (let i = 0; i < MAX_POLLS; i++) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      const jr = await fetch(`/api/v1/jobs/${jobId}`, { credentials: "include" });
+      if (!jr.ok) {
+        pushLog(`Job poll failed (${jr.status}).`);
+        break;
+      }
+      const data = (await jr.json()) as {
+        status: string;
+        audioUrl?: string;
+        error?: string;
+      };
+      if (data.status === "failed") {
+        pushLog(`Generation failed: ${data.error ?? "unknown"}`);
+        break;
+      }
+      if (data.status === "complete" && data.audioUrl) {
+        audioUrl = data.audioUrl;
+        break;
+      }
+    }
+
+    if (audioUrl) {
+      try {
+        pushLog("Downloading audio…");
+        const ar = await fetch(audioUrl);
+        if (!ar.ok) throw new Error(String(ar.status));
+        const ab = await ar.arrayBuffer();
+        pushLog("Decoding…");
+        const buffer = await ctx.decodeAudioData(ab);
+        let targetId = useStudioStore.getState().selectedId;
+        if (!targetId) targetId = addTrack({ name: prompt.slice(0, 22), genreId });
+        setBuffer(targetId, buffer);
+        setName(targetId, prompt.slice(0, 28));
+        setGenreId(targetId, genreId);
+        pushLog(`Decoded ${buffer.duration.toFixed(1)}s clip`);
+        return;
+      } catch (e) {
+        pushLog(`Download/decode failed: ${(e as Error).message}`);
+      }
+    }
+
+    pushLog("Falling back to local preview engine.");
+    await runMock(false);
   };
 
   const getSelectedWavBlob = useCallback(async () => {

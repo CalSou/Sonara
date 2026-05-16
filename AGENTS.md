@@ -10,7 +10,7 @@ Sonara is a **single Next.js 15 app**. Core Studio/DJ audio runs **client-side**
 
 **Operational blueprint:** [`docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md`](docs/ARCHITECTURE_DEPLOYMENT_COST_MODEL.md).
 
-AI generation/stems/mastering remain **mocked on the client** (`src/lib/ai/mock.ts`) until later phases wire `/api/v1/generate` & workers.
+**Phase 4 generation:** server-driven music via **Replicate Stable Audio Open** when `AI_PROVIDER=replicate` plus `DATABASE_URL`, `REPLICATE_API_TOKEN`, `REPLICATE_STABLE_AUDIO_VERSION`, and webhook signing (`POST /api/v1/webhooks/replicate`). Flow: `POST /api/v1/generate` (202 + `job_id`) → Replicate calls webhook → poll `GET /api/v1/jobs/:id` → browser downloads `audioUrl`. Studio enables this path only when **`NEXT_PUBLIC_AI_GENERATE_BACKEND=server`** and **`GET /api/v1/ai/capabilities`** reports **`generateBackend: "replicate"`** (typically signed-in + configured server). Otherwise **Generate** stays on the procedural client mock (`src/lib/ai/mock.ts`). **Stems / mastering / analysis / auto-mix** remain mocked on the client.
 
 ### Running the application
 
@@ -23,7 +23,7 @@ AI generation/stems/mastering remain **mocked on the client** (`src/lib/ai/mock.
 - **Production secret:** `AUTH_SECRET` or `NEXTAUTH_SECRET` is required at **runtime** in production. `next build` skips that throw when `NEXT_PHASE` is a compiler phase or `npm_lifecycle_event=build` (see `resolveAuthSecret` in `auth.config.ts`).
 - Build may still warn about **jose / CompressionStream** on Edge — known NextAuth + middleware noise unless we swap JWT strategy.
 
-- `NEXT_PUBLIC_REQUIRE_AUTH=true` — middleware protects `/studio`, `/dj`, and `/api/v1/*` (except `/api/v1/auth/*`, `/api/v1/webhooks/*`, and `/api/v1/publish/*`). Unauthenticated users are redirected to `/guest-login`.
+- `NEXT_PUBLIC_REQUIRE_AUTH=true` — middleware protects `/studio`, `/dj`, and `/api/v1/*` (except `/api/v1/auth/*`, `/api/v1/webhooks/*`, `/api/v1/publish/*`, and **`/api/v1/ai/capabilities`**). Unauthenticated users are redirected to `/guest-login`.
 - If **`DATABASE_URL` is unset** and `NEXT_PUBLIC_ALLOW_GUEST_WITHOUT_DB` is not `"false"`, Studio/DJ stay reachable **without** login (CI/local prototype).
 - Matcher includes **`/api/v1`** (exact path) plus `/api/v1/:path*` so routes like `/api/v1/projects` are guarded.
 
