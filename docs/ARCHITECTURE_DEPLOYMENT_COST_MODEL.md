@@ -17,6 +17,7 @@ Version: 1.0 | Date: 3 May 2026 | Audience: Engineering (Cursor) | CONFIDENTIAL
 5. [Monitoring & Observability](#5-monitoring--observability)
 6. [Security Architecture](#6-security-architecture)
 7. [Local Development Setup](#7-local-development-setup)
+8. [Phase 4 — Server generation](#8-phase-4--server-generation)
 
 ---
 
@@ -511,8 +512,7 @@ services:
     ports: ['9000:9000', '9001:9001']
     volumes: ['miniodata:/data']
 
-  # Replicate is not emulated locally — use mocked AI providers
-  # Set NEXT_PUBLIC_AI_PROVIDER=mock in .env.local for development
+  # Replicate is not emulated locally — use client AI mock by default (`NEXT_PUBLIC_AI_GENERATE_BACKEND=mock`)
 
 volumes:
   pgdata:
@@ -526,7 +526,21 @@ New developer onboarding checklist:
 3. **Copy env template:** `cp .env.example .env.local` and fill in the local values
 4. **Apply schema:** `npm run db:migrate` (applies SQL in `drizzle/`) or `npm run db:push` for schema sync without migration files
 5. **Run dev server:** `npm run dev` — application available at `http://localhost:3000`
-6. **Verify AI mocks:** With `NEXT_PUBLIC_AI_PROVIDER=mock`, all AI features return realistic test data without hitting Replicate.
+6. **Verify AI defaults:** With `NEXT_PUBLIC_AI_GENERATE_BACKEND=mock` (default), Studio generation stays on the in-browser procedural mock. For live Replicate generation see §8.
+
+---
+
+## 8. Phase 4 — Server generation
+
+Production path for **text-to-music** uses **Stable Audio Open** on **Replicate** (`stability-ai/stable-audio-open-1.0`, version pinned via `REPLICATE_STABLE_AUDIO_VERSION`). Async contract:
+
+| Step | Endpoint |
+| :--- | :--- |
+| Queue | `POST /api/v1/generate` → `202 { job_id }` |
+| Callback | `POST /api/v1/webhooks/replicate` (Svix-style signed webhook) |
+| Poll | `GET /api/v1/jobs/:id` → `{ status, audioUrl? }` |
+
+**Env:** `AI_PROVIDER=replicate`, `REPLICATE_API_TOKEN`, `REPLICATE_STABLE_AUDIO_VERSION`, `REPLICATE_WEBHOOK_SIGNING_SECRET`, `DATABASE_URL`, optional `SUPABASE_*` to re-host WAVs. **Studio:** set `NEXT_PUBLIC_AI_GENERATE_BACKEND=server` so the client probes `/api/v1/ai/capabilities` and uses the server route when `generateBackend === "replicate"`.
 
 ---
 
@@ -535,5 +549,6 @@ New developer onboarding checklist:
 | Version | Date | Author | Change |
 | :--- | :--- | :--- | :--- |
 | 1.0 | 3 May 2026 | Claude (Anthropic) | Initial release — complements Sonara PRD v1.0 |
+| 1.2 | 16 May 2026 | Cursor | §8 Phase 4 server generation + checklist env rename |
 
 This document is a companion to **Sonara PRD v1.0**. All section cross-references (§) refer to the PRD. Both documents should be versioned together. Questions or updates: raise a GitHub issue tagged `docs`.
